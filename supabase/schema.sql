@@ -1,0 +1,91 @@
+-- 찬양팀 콘티 공유 · 데이터베이스 스키마
+-- Supabase 대시보드 > SQL Editor 에 붙여넣고 실행하세요.
+
+create extension if not exists "pgcrypto";
+
+-- ─────────────────────────────────────────────
+-- 콘티 (한 번의 예배에서 부를 곡 묶음)
+-- ─────────────────────────────────────────────
+create table if not exists conti (
+  id           uuid primary key default gen_random_uuid(),
+  title        text not null,
+  service_date date not null default current_date,
+  note         text not null default '',        -- 콘티 전체 안내사항
+  created_by   text not null default '',
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+create index if not exists conti_service_date_idx on conti (service_date desc);
+
+-- ─────────────────────────────────────────────
+-- 곡
+-- ─────────────────────────────────────────────
+create table if not exists song (
+  id          uuid primary key default gen_random_uuid(),
+  conti_id    uuid not null references conti(id) on delete cascade,
+  order_index int  not null default 0,
+  title       text not null,
+  song_key    text not null default '',         -- 곡 키 (G, Am ...)
+  bpm         text not null default '',
+  memo        text not null default '',         -- 곡별 전체 메모
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists song_conti_idx on song (conti_id, order_index);
+
+-- ─────────────────────────────────────────────
+-- 레퍼런스 (유튜브 링크). 곡당 여러 개 가능
+-- ─────────────────────────────────────────────
+create table if not exists reference (
+  id          uuid primary key default gen_random_uuid(),
+  song_id     uuid not null references song(id) on delete cascade,
+  order_index int  not null default 0,
+  url         text not null,
+  label       text not null default '',         -- "원곡", "우리 편곡" 등
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists reference_song_idx on reference (song_id, order_index);
+
+-- ─────────────────────────────────────────────
+-- 악보 파일 (곡당 여러 장 가능). PDF 는 여러 페이지를 가진다.
+-- ─────────────────────────────────────────────
+create table if not exists sheet (
+  id          uuid primary key default gen_random_uuid(),
+  song_id     uuid not null references song(id) on delete cascade,
+  order_index int  not null default 0,
+  storage_path text not null,                   -- supabase storage 안의 경로
+  file_name   text not null default '',
+  kind        text not null check (kind in ('pdf', 'image')),
+  page_count  int  not null default 1,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists sheet_song_idx on sheet (song_id, order_index);
+
+-- ─────────────────────────────────────────────
+-- 손글씨 메모. (악보 1장 · 페이지 1개 · 작성자 1명) 당 한 줄.
+-- strokes 는 0~1 로 정규화된 좌표라 화면 크기가 달라도 그대로 얹힌다.
+-- ─────────────────────────────────────────────
+create table if not exists annotation (
+  id         uuid primary key default gen_random_uuid(),
+  sheet_id   uuid not null references sheet(id) on delete cascade,
+  page       int  not null default 1,
+  author     text not null,
+  strokes    jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now(),
+  unique (sheet_id, page, author)
+);
+
+create index if not exists annotation_sheet_idx on annotation (sheet_id);
+
+-- ─────────────────────────────────────────────
+-- RLS: 서버(service role)를 통해서만 접근한다.
+-- 정책을 만들지 않으면 anon/authenticated 키로는 아무것도 읽고 쓸 수 없다.
+-- ─────────────────────────────────────────────
+alter table conti      enable row level security;
+alter table song       enable row level security;
+alter table reference  enable row level security;
+alter table sheet      enable row level security;
+alter table annotation enable row level security;

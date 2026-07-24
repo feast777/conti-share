@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npm install next@latest react@latest react-dom@latest @supabase/supabase-js pdfjs-dist 2>&1)",
+      "PowerShell(npm install -D typescript @types/react @types/react-dom @types/node tailwindcss @tailwindcss/postcss postcss 2>&1)",
+      "PowerShell(node scripts/copy-pdf-worker.mjs)",
+      "PowerShell(npm install server-only 2>&1)",
+      "PowerShell(npx tsc --noEmit 2>&1)",
+      "PowerShell(Select-String -Path \"node_modules\\\\pdfjs-dist\\\\types\\\\src\\\\display\\\\api.d.ts\" -Pattern \"class PDFDocumentProxy\" -Context 0,60 | Select-Object -First 1 | ForEach-Object { $_.Context.PostContext -join \"`n\" })",
+      "PowerShell(Select-String -Path \"node_modules\\\\pdfjs-dist\\\\types\\\\src\\\\display\\\\api.d.ts\" -Pattern \"RenderParameters = \" -Context 0,30 | Select-Object -First 1 | ForEach-Object { $_.Context.PostContext -join \"`n\" })",
+      "PowerShell(npx next build 2>&1)",
+      "PowerShell(npm ls typescript 2>&1)",
+      "PowerShell(npm install -D typescript@^5.9 2>&1)",
+      "PowerShell(npx tsc --version)",
+      "PowerShell(node \"C:\\\\Users\\\\USER\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C----------\\\\5e539a20-e0a8-4664-b049-5c7be961eda6\\\\scratchpad\\\\make-sample-pdf.mjs\" \"C:\\\\��Ƽ�������α׷�\\\\public\\\\__sample-sheet.pdf\")",
+      "PowerShell(Move-Item \"src\\\\app\\\\__preview\" \"src\\\\app\\\\preview-tmp\")",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://192.168.0.26:3000/preview-tmp\" -UseBasicParsing -TimeoutSec 15; \"LAN OK: HTTP $\\($r.StatusCode\\)\" } catch { \"LAN 실패: $\\($_.Exception.Message\\)\" })",
+      "mcp__claude-in-chrome__list_connected_browsers",
+      "PowerShell(node --env-file=.env.local scripts/check-supabase.mjs)",
+      "PowerShell(node --env-file=.env.local scripts/seed-conti.mjs)",
+      "PowerShell(node --env-file=.env.local scripts/clear-test-annotations.mjs �׽�Ʈ)",
+      "PowerShell(if \\($?\\) { \"Ÿ�� üũ ���\" })"
+    ]
+  }
+}
