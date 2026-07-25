@@ -41,6 +41,12 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
 
+  // 페이지터너 페달이 보내는 키 확인용
+  const [pedalTest, setPedalTest] = useState(false);
+  const [lastKey, setLastKey] = useState("");
+  const pedalTestRef = useRef(pedalTest);
+  pedalTestRef.current = pedalTest;
+
   // ── 내 필기 / 남의 필기 ──────────────────────────────
   const [mine, setMine] = useState<Record<string, Stroke[]>>(() => {
     const map: Record<string, Stroke[]> = {};
@@ -178,21 +184,36 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
 
   const selectSong = useCallback((i: number) => goTo(i, 0), [goTo]);
 
-  // 키보드 · 블루투스 페이지터너 (보통 방향키나 PageUp/Down 을 보낸다)
+  // 키보드 · 블루투스 페이지터너
+  // 페달마다 보내는 키가 달라서 (방향키 / PageUp·Down / 스페이스 / Enter / 미디어키 등)
+  // 넘어갈 만한 키를 넓게 받는다. 정확한 키는 상단 "페달" 버튼으로 확인할 수 있다.
   useEffect(() => {
+    const NEXT = ["ArrowRight", "ArrowDown", "PageDown", "Right", "Down", "MediaTrackNext", "AudioVolumeDown"];
+    const PREV = ["ArrowLeft", "ArrowUp", "PageUp", "Left", "Up", "MediaTrackPrevious", "AudioVolumeUp"];
+
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
-      if (el?.tagName === "INPUT" || el?.tagName === "TEXTAREA") return;
+      const tag = el?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || el?.isContentEditable) return;
 
-      if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(e.key)) {
+      if (pedalTestRef.current) setLastKey(`${e.key || "?"}  ·  code: ${e.code || "?"}`);
+
+      const onButton = tag === "BUTTON" || tag === "A";
+      const k = e.key;
+
+      // 스페이스·Enter 는 버튼에 포커스가 없을 때만 "다음" 으로 (버튼 클릭과 겹치지 않게)
+      const goNext = NEXT.includes(k) || ((k === " " || k === "Enter") && !onButton);
+      const goPrev = PREV.includes(k);
+
+      if (goNext) {
         e.preventDefault();
         next();
-      } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) {
+      } else if (goPrev) {
         e.preventDefault();
         prev();
-      } else if (e.key === "e") {
+      } else if (k === "e") {
         setAnnotating((a) => !a);
-      } else if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+      } else if ((e.ctrlKey || e.metaKey) && k === "z") {
         e.preventDefault();
         undo();
       }
@@ -275,6 +296,16 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
           title="화면맞춤 / 폭맞춤"
         >
           {fit === "contain" ? "화면" : "폭"}
+        </button>
+
+        <button
+          onClick={() => setPedalTest((v) => !v)}
+          className={`rounded-md border px-2 py-1 text-xs transition ${
+            pedalTest ? "border-accent text-accent" : "border-ink-700 text-ink-400 hover:text-white"
+          }`}
+          title="페이지터너 페달이 보내는 키 확인"
+        >
+          페달
         </button>
 
         <button
@@ -371,6 +402,15 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
             {otherAuthors.length > 0 && showOthers && (
               <span className="ml-2 text-ink-400">· {otherAuthors.join(", ")} 메모</span>
             )}
+          </div>
+        )}
+
+        {/* 페달 확인 — 켜면 마지막으로 눌린 키를 보여준다 */}
+        {pedalTest && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-10 flex justify-center px-4">
+            <div className="max-w-full rounded-lg bg-black/80 px-3 py-1.5 text-center text-xs text-ink-100">
+              페달/키를 눌러보세요 → <span className="font-mono text-accent">{lastKey || "…"}</span>
+            </div>
           </div>
         )}
 
