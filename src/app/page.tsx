@@ -54,11 +54,11 @@ export default async function HomePage() {
       ) : (
         <ul className="space-y-2">
           {contis.map((c) => (
-            <li key={c.id}>
-              <Link
-                href={`/conti/${c.id}`}
-                className="flex items-center gap-4 rounded-xl border border-ink-700 bg-ink-900 p-4 transition hover:border-ink-600 hover:bg-ink-800"
-              >
+            <li
+              key={c.id}
+              className="flex items-center gap-2 rounded-xl border border-ink-700 bg-ink-900 pr-3 transition hover:border-ink-600 hover:bg-ink-800"
+            >
+              <Link href={`/conti/${c.id}`} className="flex min-w-0 flex-1 items-center gap-4 p-4">
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-white">{c.title}</p>
                   <p className="mt-0.5 text-sm text-ink-400">
@@ -66,8 +66,15 @@ export default async function HomePage() {
                     {c.created_by && ` · ${c.created_by}`}
                   </p>
                 </div>
-                <span className="text-ink-600">›</span>
               </Link>
+              <a
+                href={`/conti/${c.id}/pdf`}
+                className="shrink-0 rounded-lg border border-ink-700 px-3 py-1.5 text-xs text-ink-400 transition hover:border-ink-500 hover:text-white"
+                title="이 콘티의 악보 전체를 PDF 로 내려받기"
+              >
+                PDF
+              </a>
+              <span className="shrink-0 text-ink-600">›</span>
             </li>
           ))}
         </ul>

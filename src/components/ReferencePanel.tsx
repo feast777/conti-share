@@ -4,19 +4,28 @@ import { useEffect, useState } from "react";
 import type { Reference } from "@/lib/types";
 import { embedUrl, parseYoutube, thumbnailUrl } from "@/lib/youtube";
 
-export default function ReferencePanel({ references }: { references: Reference[] }) {
+/** 곡 제목 + 악기 로 유튜브를 검색하는 버튼 목록 (필요하면 여기서 추가/변경) */
+const INSTRUMENTS = [
+  { label: "피아노", icon: "🎹" },
+  { label: "일렉기타", icon: "🎸" },
+  { label: "베이스", icon: "🎸" },
+  { label: "드럼", icon: "🥁" },
+];
+
+const searchUrl = (songTitle: string, instrument: string) =>
+  `https://www.youtube.com/results?search_query=${encodeURIComponent(`${songTitle} ${instrument}`)}`;
+
+export default function ReferencePanel({
+  references,
+  songTitle,
+}: {
+  references: Reference[];
+  songTitle: string;
+}) {
   const [playing, setPlaying] = useState<string | null>(null);
 
   // 곡이 바뀌면 재생을 멈춘다
   useEffect(() => setPlaying(null), [references]);
-
-  if (references.length === 0) {
-    return (
-      <p className="p-6 text-center text-sm text-ink-600">
-        등록된 레퍼런스가 없습니다. 편집 화면에서 유튜브 링크를 추가하세요.
-      </p>
-    );
-  }
 
   return (
     <div className="flex h-full gap-3 overflow-x-auto p-3">
@@ -76,6 +85,25 @@ export default function ReferencePanel({ references }: { references: Reference[]
           </div>
         );
       })}
+
+      {/* 곡 제목 + 악기 로 유튜브에서 바로 찾기 */}
+      <div className="flex h-full shrink-0 flex-col justify-center gap-1.5 rounded-lg border border-dashed border-ink-700 px-3 py-2">
+        <p className="mb-0.5 px-1 text-[11px] text-ink-600">유튜브에서 찾기</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {INSTRUMENTS.map((it) => (
+            <a
+              key={it.label}
+              href={searchUrl(songTitle, it.label)}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-1 rounded-md border border-ink-700 px-3 py-2 text-xs text-ink-400 transition hover:border-ink-500 hover:text-white"
+            >
+              <span>{it.icon}</span>
+              <span>{it.label}</span>
+            </a>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

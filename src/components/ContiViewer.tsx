@@ -500,7 +500,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
         {panelOpen && (
           <div className="h-[38dvh] border-t border-ink-800 sm:h-64">
             {panelTab === "ref" ? (
-              <ReferencePanel references={song.references} />
+              <ReferencePanel references={song.references} songTitle={song.title} />
             ) : (
               <SongMemo song={song} contiId={conti.id} />
             )}
