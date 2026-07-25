@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { searchYoutube } from "@/app/actions";
 import type { Reference } from "@/lib/types";
 import { embedUrl, parseYoutube, thumbnailUrl } from "@/lib/youtube";
 
-/** 곡 제목 + 악기 로 유튜브를 검색하는 버튼 목록 (필요하면 여기서 추가/변경) */
+/** 곡 제목 + 악기 로 유튜브를 찾는 버튼 목록 (필요하면 여기서 추가/변경) */
 const INSTRUMENTS = [
   { label: "피아노", icon: "🎹" },
   { label: "일렉기타", icon: "🎸" },
@@ -15,6 +16,9 @@ const INSTRUMENTS = [
 const searchUrl = (songTitle: string, instrument: string) =>
   `https://www.youtube.com/results?search_query=${encodeURIComponent(`${songTitle} ${instrument}`)}`;
 
+/** "loading" = 검색 중, string = 찾은 영상 ID, null = 결과 없음 */
+type Found = "loading" | string | null;
+
 export default function ReferencePanel({
   references,
   songTitle,
@@ -23,9 +27,27 @@ export default function ReferencePanel({
   songTitle: string;
 }) {
   const [playing, setPlaying] = useState<string | null>(null);
+  const [openInst, setOpenInst] = useState<string | null>(null);
+  const [found, setFound] = useState<Record<string, Found>>({});
 
-  // 곡이 바뀌면 재생을 멈춘다
-  useEffect(() => setPlaying(null), [references]);
+  // 곡이 바뀌면 재생·검색 상태를 초기화한다
+  useEffect(() => {
+    setPlaying(null);
+    setOpenInst(null);
+    setFound({});
+  }, [references, songTitle]);
+
+  const pickInstrument = async (instrument: string) => {
+    setOpenInst(instrument);
+    setPlaying(null);
+    if (found[instrument] === undefined) {
+      setFound((f) => ({ ...f, [instrument]: "loading" }));
+      const id = await searchYoutube(`${songTitle} ${instrument}`);
+      setFound((f) => ({ ...f, [instrument]: id }));
+    }
+  };
+
+  const result = openInst ? found[openInst] : undefined;
 
   return (
     <div className="flex h-full gap-3 overflow-x-auto p-3">
@@ -86,24 +108,80 @@ export default function ReferencePanel({
         );
       })}
 
-      {/* 곡 제목 + 악기 로 유튜브에서 바로 찾기 */}
+      {/* 곡 제목 + 악기 로 유튜브에서 찾아 앱 안에서 재생 */}
       <div className="flex h-full shrink-0 flex-col justify-center gap-1.5 rounded-lg border border-dashed border-ink-700 px-3 py-2">
         <p className="mb-0.5 px-1 text-[11px] text-ink-600">유튜브에서 찾기</p>
         <div className="grid grid-cols-2 gap-1.5">
           {INSTRUMENTS.map((it) => (
-            <a
+            <button
               key={it.label}
-              href={searchUrl(songTitle, it.label)}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-center gap-1 rounded-md border border-ink-700 px-3 py-2 text-xs text-ink-400 transition hover:border-ink-500 hover:text-white"
+              onClick={() => pickInstrument(it.label)}
+              className={`flex items-center justify-center gap-1 rounded-md border px-3 py-2 text-xs transition ${
+                openInst === it.label
+                  ? "border-accent text-white"
+                  : "border-ink-700 text-ink-400 hover:border-ink-500 hover:text-white"
+              }`}
             >
               <span>{it.icon}</span>
               <span>{it.label}</span>
-            </a>
+            </button>
           ))}
         </div>
       </div>
+
+      {/* 선택한 악기의 검색 결과 영상 */}
+      {openInst && (
+        <div className="flex h-full shrink-0 flex-col">
+          <div className="relative h-full aspect-video overflow-hidden rounded-lg bg-black">
+            {result === "loading" ? (
+              <div className="grid h-full w-full place-items-center text-xs text-ink-500">
+                검색 중…
+              </div>
+            ) : typeof result === "string" ? (
+              playing === `inst:${openInst}` ? (
+                <iframe
+                  src={embedUrl({ id: result, start: 0 })}
+                  title={openInst}
+                  allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
+                  allowFullScreen
+                  className="h-full w-full"
+                />
+              ) : (
+                <button
+                  onClick={() => setPlaying(`inst:${openInst}`)}
+                  className="group relative h-full w-full"
+                  aria-label={`${openInst} 영상 재생`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={thumbnailUrl(result)}
+                    alt=""
+                    className="h-full w-full object-cover opacity-80 transition group-hover:opacity-100"
+                  />
+                  <span className="absolute inset-0 grid place-items-center">
+                    <span className="grid h-11 w-11 place-items-center rounded-full bg-black/70 text-lg text-white">
+                      ▶
+                    </span>
+                  </span>
+                </button>
+              )
+            ) : (
+              <div className="grid h-full w-full place-content-center gap-1 p-3 text-center">
+                <p className="text-xs text-ink-500">결과를 못 찾았어요</p>
+                <a
+                  href={searchUrl(songTitle, openInst)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-accent underline"
+                >
+                  유튜브에서 보기
+                </a>
+              </div>
+            )}
+          </div>
+          <p className="mt-1 truncate text-center text-xs text-ink-400">{openInst}</p>
+        </div>
+      )}
     </div>
   );
 }

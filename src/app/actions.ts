@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkTeamPassword, createSession, destroySession, requireSession } from "@/lib/auth";
 import { SHEET_BUCKET, db } from "@/lib/db";
@@ -290,6 +290,47 @@ export async function deleteSheet(sheetId: string, contiId: string) {
 
   revalidatePath(`/conti/${contiId}/edit`);
   revalidatePath(`/conti/${contiId}`);
+}
+
+// ─────────────────────────────────────────────
+// 유튜브 검색 (곡 제목 + 악기 로 앱 안에서 영상 찾기)
+// ─────────────────────────────────────────────
+/**
+ * 유튜브 검색 결과 페이지를 서버에서 받아 맨 위 영상 ID 를 뽑는다.
+ * API 키 없이 동작하고, 같은 검색어는 하루 동안 캐시한다.
+ */
+const searchYoutubeCached = unstable_cache(
+  async (query: string): Promise<string | null> => {
+    const url =
+      "https://www.youtube.com/results?search_query=" +
+      encodeURIComponent(query) +
+      "&sp=EgIQAQ%253D%253D"; // 동영상만 필터
+    try {
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+          "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+          Cookie: "SOCS=CAI; CONSENT=YES+1",
+        },
+      });
+      if (!res.ok) return null;
+      const html = await res.text();
+      const m = html.match(/"videoId":"([\w-]{11})"/);
+      return m?.[1] ?? null;
+    } catch {
+      return null;
+    }
+  },
+  ["yt-search"],
+  { revalidate: 60 * 60 * 24 }
+);
+
+export async function searchYoutube(query: string): Promise<string | null> {
+  await requireSession();
+  const q = query.trim();
+  if (!q) return null;
+  return searchYoutubeCached(q);
 }
 
 // ─────────────────────────────────────────────
