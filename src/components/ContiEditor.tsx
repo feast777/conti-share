@@ -1,8 +1,26 @@
 "use client";
 
+import {
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   addReference,
   addSong,
@@ -38,14 +56,41 @@ export default function ContiEditor({ conti }: { conti: Conti }) {
     refresh();
   };
 
-  const move = async (index: number, delta: number) => {
-    const ids = conti.songs.map((s) => s.id);
-    const target = index + delta;
-    if (target < 0 || target >= ids.length) return;
-    [ids[index], ids[target]] = [ids[target], ids[index]];
-    await reorderSongs(conti.id, ids);
-    refresh();
+  // 곡 순서는 화면에서 바로 바꾸고(드래그), 저장은 손을 뗀 순간 한 번만 한다.
+  const [orderIds, setOrderIds] = useState<string[]>(() => conti.songs.map((s) => s.id));
+
+  // 곡이 추가/삭제되면(서버 새로고침) 순서를 서버 기준으로 다시 맞춘다
+  const idSetSig = conti.songs
+    .map((s) => s.id)
+    .slice()
+    .sort()
+    .join(",");
+  const prevSig = useRef(idSetSig);
+  useEffect(() => {
+    if (prevSig.current !== idSetSig) {
+      prevSig.current = idSetSig;
+      setOrderIds(conti.songs.map((s) => s.id));
+    }
+  }, [idSetSig, conti.songs]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const onDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    setOrderIds((ids) => {
+      const next = arrayMove(ids, ids.indexOf(String(active.id)), ids.indexOf(String(over.id)));
+      void reorderSongs(conti.id, next); // 저장은 한 번만, 화면 새로고침 없음
+      return next;
+    });
   };
+
+  const songById = new Map(conti.songs.map((s) => [s.id, s]));
+  const orderedSongs = orderIds.map((id) => songById.get(id)).filter(Boolean) as Song[];
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 pb-24">
@@ -95,20 +140,22 @@ export default function ContiEditor({ conti }: { conti: Conti }) {
         />
       </section>
 
-      {/* 곡 목록 */}
-      <ol className="space-y-4">
-        {conti.songs.map((song, i) => (
-          <SongCard
-            key={song.id}
-            song={song}
-            index={i}
-            total={conti.songs.length}
-            contiId={conti.id}
-            onMove={move}
-            onRefresh={refresh}
-          />
-        ))}
-      </ol>
+      {/* 곡 목록 — 손잡이(⠿)를 끌어서 순서 변경 */}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={orderIds} strategy={verticalListSortingStrategy}>
+          <ol className="space-y-4">
+            {orderedSongs.map((song, i) => (
+              <SongCard
+                key={song.id}
+                song={song}
+                index={i}
+                contiId={conti.id}
+                onRefresh={refresh}
+              />
+            ))}
+          </ol>
+        </SortableContext>
+      </DndContext>
 
       {/* 곡 추가 */}
       <div className="mt-4 flex gap-2">
@@ -148,18 +195,18 @@ export default function ContiEditor({ conti }: { conti: Conti }) {
 function SongCard({
   song,
   index,
-  total,
   contiId,
-  onMove,
   onRefresh,
 }: {
   song: Song;
   index: number;
-  total: number;
   contiId: string;
-  onMove: (index: number, delta: number) => void;
   onRefresh: () => void;
 }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+    useSortable({ id: song.id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const [refUrl, setRefUrl] = useState("");
@@ -210,9 +257,26 @@ function SongCard({
   };
 
   return (
-    <li className="rounded-xl border border-ink-700 bg-ink-900 p-4">
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`rounded-xl border border-ink-700 bg-ink-900 p-4 ${
+        isDragging ? "relative z-10 opacity-80 shadow-2xl" : ""
+      }`}
+    >
       <div className="mb-3 flex items-start gap-2">
-        <span className="mt-2 w-5 shrink-0 text-center text-sm text-ink-600">{index + 1}</span>
+        <button
+          type="button"
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          className="mt-1 flex shrink-0 cursor-grab touch-none items-center gap-1 rounded px-1 py-1 text-ink-500 hover:text-white active:cursor-grabbing"
+          title="끌어서 순서 변경"
+          aria-label={`${index + 1}번 곡 순서 바꾸기`}
+        >
+          <span className="text-base leading-none">⠿</span>
+          <span className="w-4 text-center text-sm text-ink-600">{index + 1}</span>
+        </button>
 
         <div className="min-w-0 flex-1 space-y-2">
           <DebouncedField
@@ -235,23 +299,6 @@ function SongCard({
               className="w-24"
             />
           </div>
-        </div>
-
-        <div className="flex shrink-0 flex-col gap-1">
-          <button
-            onClick={() => onMove(index, -1)}
-            disabled={index === 0}
-            className="rounded px-2 text-ink-400 hover:text-white disabled:opacity-25"
-          >
-            ▲
-          </button>
-          <button
-            onClick={() => onMove(index, 1)}
-            disabled={index === total - 1}
-            className="rounded px-2 text-ink-400 hover:text-white disabled:opacity-25"
-          >
-            ▼
-          </button>
         </div>
       </div>
 
