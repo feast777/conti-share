@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PdfButton from "@/components/PdfButton";
 import { requireSession } from "@/lib/auth";
 import { listContis } from "@/lib/queries";
 import { createConti, logout } from "./actions";
@@ -67,13 +68,7 @@ export default async function HomePage() {
                   </p>
                 </div>
               </Link>
-              <a
-                href={`/conti/${c.id}/pdf`}
-                className="shrink-0 rounded-lg border border-ink-700 px-3 py-1.5 text-xs text-ink-400 transition hover:border-ink-500 hover:text-white"
-                title="이 콘티의 악보 전체를 PDF 로 내려받기"
-              >
-                PDF
-              </a>
+              <PdfButton contiId={c.id} title={c.title} />
               <span className="shrink-0 text-ink-600">›</span>
             </li>
           ))}

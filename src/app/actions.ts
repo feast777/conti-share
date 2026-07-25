@@ -4,6 +4,7 @@ import { revalidatePath, unstable_cache } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkTeamPassword, createSession, destroySession, requireSession } from "@/lib/auth";
 import { SHEET_BUCKET, db } from "@/lib/db";
+import { getConti } from "@/lib/queries";
 import type { SheetKind, Stroke } from "@/lib/types";
 
 // ─────────────────────────────────────────────
@@ -290,6 +291,26 @@ export async function deleteSheet(sheetId: string, contiId: string) {
 
   revalidatePath(`/conti/${contiId}/edit`);
   revalidatePath(`/conti/${contiId}`);
+}
+
+// ─────────────────────────────────────────────
+// 콘티 PDF 저장용 — 악보 목록(열람 URL 포함) 넘겨주기
+// ─────────────────────────────────────────────
+/** 콘티의 모든 악보를 곡·악보 순서대로, 브라우저에서 받을 수 있는 임시 URL 과 함께 준다. */
+export async function listContiSheets(contiId: string): Promise<{
+  title: string;
+  sheets: { url: string; kind: SheetKind; fileName: string }[];
+}> {
+  await requireSession();
+  const conti = await getConti(contiId);
+  if (!conti) return { title: "콘티", sheets: [] };
+
+  const sheets = conti.songs
+    .flatMap((song) => song.sheets)
+    .filter((s) => s.url)
+    .map((s) => ({ url: s.url as string, kind: s.kind, fileName: s.file_name }));
+
+  return { title: conti.title, sheets };
 }
 
 // ─────────────────────────────────────────────
