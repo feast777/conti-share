@@ -36,10 +36,18 @@ import {
   updateSong,
 } from "@/app/actions";
 import { readPdfPageCount } from "@/lib/pdf";
-import type { Conti, Song } from "@/lib/types";
+import type { Conti, SheetLayout, Song } from "@/lib/types";
 import DebouncedField from "./DebouncedField";
 
 const ACCEPT = ".pdf,image/png,image/jpeg,image/webp";
+
+/** 악보 배치 선택 버튼에 쓰는 목록 */
+const LAYOUTS: { value: SheetLayout; label: string }[] = [
+  { value: "single", label: "한 장씩" },
+  { value: "vertical", label: "상하" },
+  { value: "horizontal", label: "좌우" },
+  { value: "grid", label: "바둑판" },
+];
 
 export default function ContiEditor({ conti }: { conti: Conti }) {
   const router = useRouter();
@@ -212,6 +220,15 @@ function SongCard({
   const [refUrl, setRefUrl] = useState("");
   const [refLabel, setRefLabel] = useState("");
 
+  // 악보 배치 — 화면에서 바로 바꾸고 저장
+  const [layout, setLayout] = useState<SheetLayout>(song.sheet_layout ?? "single");
+  useEffect(() => setLayout(song.sheet_layout ?? "single"), [song.id, song.sheet_layout]);
+  const pageTotal = song.sheets.reduce((n, s) => n + Math.max(1, s.page_count), 0);
+  const chooseLayout = (v: SheetLayout) => {
+    setLayout(v);
+    void updateSong(song.id, contiId, { sheet_layout: v });
+  };
+
   const upload = async (files: FileList | null) => {
     if (!files?.length) return;
 
@@ -353,6 +370,26 @@ function SongCard({
             onChange={(e) => upload(e.target.files)}
           />
         </div>
+
+        {/* 배치 — 페이지가 2장 이상일 때만 (여러 장을 한 화면에 어떻게 놓을지) */}
+        {pageTotal >= 2 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-xs text-ink-600">배치</span>
+            {LAYOUTS.map((l) => (
+              <button
+                key={l.value}
+                onClick={() => chooseLayout(l.value)}
+                className={`rounded-md border px-2.5 py-1 text-xs transition ${
+                  layout === l.value
+                    ? "border-accent text-white"
+                    : "border-ink-700 text-ink-400 hover:text-white"
+                }`}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 레퍼런스 */}

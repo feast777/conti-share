@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { saveAnnotation, updateSong } from "@/app/actions";
-import type { Annotation, Conti, Stroke } from "@/lib/types";
+import type { Annotation, Conti, SheetLayout, Stroke } from "@/lib/types";
 import type { Tool } from "./AnnotationCanvas";
 import ReferencePanel from "./ReferencePanel";
 import SheetStage from "./SheetStage";
@@ -42,6 +42,9 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
   const [panelTab, setPanelTab] = useState<"ref" | "memo">("ref");
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
+
+  // 여러 장을 한 화면에 볼 때, 되돌리기·전체지우기가 어느 장을 대상으로 할지 (마지막으로 그린 장)
+  const [activeKey, setActiveKey] = useState("");
 
   // 페이지터너 페달이 보내는 키 확인용
   const [pedalTest, setPedalTest] = useState(false);
@@ -90,7 +93,15 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
   );
 
   const current = pages[pageIndex];
-  const currentKey = current ? key(current.sheet.id, current.page) : "";
+
+  // ── 악보 배치 ───────────────────────────────────────
+  // single 이 아니면 곡의 모든 페이지를 한 화면에 배치한다 (넘김 대신 곡 넘김).
+  const layout: SheetLayout = song?.sheet_layout ?? "single";
+  const isMulti = layout !== "single" && pages.length > 1;
+  const visiblePages = isMulti ? pages : current ? [current] : [];
+  const visibleKeys = visiblePages.map((p) => key(p.sheet.id, p.page));
+  // 되돌리기·전체지우기 대상 장 (마지막으로 그린 장, 없으면 첫 장)
+  const targetKey = activeKey && visibleKeys.includes(activeKey) ? activeKey : visibleKeys[0] ?? "";
 
   // ── 자동 저장 ───────────────────────────────────────
   const pendingRef = useRef(new Map<string, { sheetId: string; page: number; strokes: Stroke[] }>());
@@ -133,34 +144,35 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
 
   useEffect(() => () => void flush(), [flush]);
 
-  const handleStrokes = useCallback(
-    (next: Stroke[]) => {
-      if (!current) return;
-      const k = key(current.sheet.id, current.page);
+  // 특정 장(sheet · page)에 필기를 반영한다. 여러 장을 한 화면에 볼 때도 각 장별로 저장된다.
+  const handleStrokesFor = useCallback(
+    (sheetId: string, page: number, next: Stroke[]) => {
+      const k = key(sheetId, page);
       (historyRef.current[k] ??= []).push(mine[k] ?? []);
       setMine((prev) => ({ ...prev, [k]: next }));
-      queueSave(current.sheet.id, current.page, next);
+      setActiveKey(k);
+      queueSave(sheetId, page, next);
     },
-    [current, mine, queueSave]
+    [mine, queueSave]
   );
 
   const undo = useCallback(() => {
-    if (!current) return;
-    const k = key(current.sheet.id, current.page);
-    const stack = historyRef.current[k];
+    if (!targetKey) return;
+    const stack = historyRef.current[targetKey];
     if (!stack?.length) return;
     const prev = stack.pop()!;
-    setMine((m) => ({ ...m, [k]: prev }));
-    queueSave(current.sheet.id, current.page, prev);
-  }, [current, queueSave]);
+    setMine((m) => ({ ...m, [targetKey]: prev }));
+    const [sheetId, page] = targetKey.split(":");
+    queueSave(sheetId, Number(page), prev);
+  }, [targetKey, queueSave]);
 
   const clearPage = useCallback(() => {
-    if (!current || !confirm("이 페이지의 내 메모를 모두 지울까요?")) return;
-    const k = key(current.sheet.id, current.page);
-    (historyRef.current[k] ??= []).push(mine[k] ?? []);
-    setMine((m) => ({ ...m, [k]: [] }));
-    queueSave(current.sheet.id, current.page, []);
-  }, [current, mine, queueSave]);
+    if (!targetKey || !confirm("이 장의 내 메모를 모두 지울까요?")) return;
+    (historyRef.current[targetKey] ??= []).push(mine[targetKey] ?? []);
+    setMine((m) => ({ ...m, [targetKey]: [] }));
+    const [sheetId, page] = targetKey.split(":");
+    queueSave(sheetId, Number(page), []);
+  }, [targetKey, mine, queueSave]);
 
   // ── 곡 · 페이지 넘기기 ──────────────────────────────
   const goTo = useCallback(
@@ -173,11 +185,20 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
   );
 
   const next = useCallback(() => {
+    // 여러 장을 한 화면에 볼 때는 페이지 넘김 대신 곡을 넘긴다
+    if (isMulti) {
+      if (songIndex < songs.length - 1) goTo(songIndex + 1, 0);
+      return;
+    }
     if (pageIndex < pages.length - 1) setPageIndex((p) => p + 1);
     else if (songIndex < songs.length - 1) goTo(songIndex + 1, 0);
-  }, [pageIndex, pages.length, songIndex, songs.length, goTo]);
+  }, [isMulti, pageIndex, pages.length, songIndex, songs.length, goTo]);
 
   const prev = useCallback(() => {
+    if (isMulti) {
+      if (songIndex > 0) goTo(songIndex - 1, 0);
+      return;
+    }
     if (pageIndex > 0) setPageIndex((p) => p - 1);
     else if (songIndex > 0) {
       const prevSong = songs[songIndex - 1];
@@ -185,7 +206,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
         prevSong.sheets.reduce((n, s) => n + Math.max(1, s.page_count), 0) - 1;
       goTo(songIndex - 1, Math.max(0, lastPage));
     }
-  }, [pageIndex, songIndex, songs, goTo]);
+  }, [isMulti, pageIndex, songIndex, songs, goTo]);
 
   const selectSong = useCallback((i: number) => goTo(i, 0), [goTo]);
 
@@ -303,7 +324,9 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
   const color = tool === "highlighter" ? hlColor : penColor;
   const size = tool === "highlighter" ? HIGHLIGHTER_SIZES[hlSize] : PEN_SIZES[penSize];
   const palette = tool === "highlighter" ? HIGHLIGHTER_COLORS : PEN_COLORS;
-  const otherAuthors = [...(others.authors[currentKey] ?? [])];
+  const otherAuthors = [
+    ...new Set(visibleKeys.flatMap((k) => [...(others.authors[k] ?? [])])),
+  ];
 
   if (!song) {
     return (
@@ -414,19 +437,47 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        {current ? (
-          <SheetStage
-            sheet={current.sheet}
-            page={current.page}
-            fit={fit}
-            strokes={mine[currentKey] ?? []}
-            otherStrokes={showOthers ? (others.map[currentKey] ?? []) : []}
-            annotating={annotating}
-            tool={tool}
-            color={color}
-            size={size}
-            onStrokesChange={handleStrokes}
-          />
+        {visiblePages.length > 0 ? (
+          <div
+            className={
+              !isMulti
+                ? "h-full w-full"
+                : layout === "vertical"
+                  ? "flex h-full w-full flex-col gap-1"
+                  : layout === "horizontal"
+                    ? "flex h-full w-full flex-row gap-1"
+                    : "grid h-full w-full grid-cols-2 grid-rows-2 gap-1"
+            }
+          >
+            {visiblePages.map((p) => {
+              const k = key(p.sheet.id, p.page);
+              return (
+                <div
+                  key={k}
+                  className={
+                    !isMulti
+                      ? "h-full w-full"
+                      : layout === "grid"
+                        ? "relative min-h-0 min-w-0"
+                        : "relative min-h-0 min-w-0 flex-1"
+                  }
+                >
+                  <SheetStage
+                    sheet={p.sheet}
+                    page={p.page}
+                    fit={isMulti ? "contain" : fit}
+                    strokes={mine[k] ?? []}
+                    otherStrokes={showOthers ? (others.map[k] ?? []) : []}
+                    annotating={annotating}
+                    tool={tool}
+                    color={color}
+                    size={size}
+                    onStrokesChange={(next) => handleStrokesFor(p.sheet.id, p.page, next)}
+                  />
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <div className="grid h-full place-items-center p-6 text-center">
             <div className="space-y-3">
@@ -461,10 +512,10 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
           </>
         )}
 
-        {/* 페이지 표시 */}
+        {/* 페이지 표시 — 한 장씩이면 "현재/전체", 여러 장 배치면 "N장" */}
         {pages.length > 0 && (
           <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs text-ink-200">
-            {pageIndex + 1} / {pages.length}
+            {isMulti ? `${pages.length}장` : `${pageIndex + 1} / ${pages.length}`}
             {otherAuthors.length > 0 && showOthers && (
               <span className="ml-2 text-ink-400">· {otherAuthors.join(", ")} 메모</span>
             )}

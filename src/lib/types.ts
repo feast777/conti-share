@@ -38,6 +38,9 @@ export type Sheet = {
   url?: string;
 };
 
+/** 악보 배치 방식 — single: 한 장씩 넘김, 나머지는 곡의 모든 페이지를 한 화면에 */
+export type SheetLayout = "single" | "vertical" | "horizontal" | "grid";
+
 export type Song = {
   id: string;
   conti_id: string;
@@ -46,6 +49,7 @@ export type Song = {
   song_key: string;
   bpm: string;
   memo: string;
+  sheet_layout: SheetLayout;
   sheets: Sheet[];
   references: Reference[];
 };
