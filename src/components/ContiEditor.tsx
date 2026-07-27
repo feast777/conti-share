@@ -224,7 +224,11 @@ function SongCard({
         const { uploadUrl, path } = await createSheetUploadUrl(song.id, file.name);
         const res = await fetch(uploadUrl, {
           method: "PUT",
-          headers: { "content-type": file.type || "application/octet-stream" },
+          headers: {
+            "content-type": file.type || "application/octet-stream",
+            // 악보 파일은 바뀌지 않으므로(수정 시 새 경로로 올라감) 오래 캐시해도 안전
+            "cache-control": "max-age=31536000, immutable",
+          },
           body: file,
         });
         if (!res.ok) throw new Error(await res.text());

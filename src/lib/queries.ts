@@ -1,6 +1,19 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { db, signSheetUrl } from "./db";
 import type { Annotation, Conti, ContiSummary, Reference, Sheet, Song } from "./types";
+
+/**
+ * 악보 열람용 서명 URL 을 캐시한다.
+ * 원래는 요청마다 새 토큰(=새 URL)이 나와서 브라우저가 매번 파일을 다시 받았다.
+ * 같은 경로는 한동안 같은 URL 을 돌려주면 브라우저·CDN 이 파일을 캐시할 수 있다.
+ * 파일은 경로(uuid)마다 고유하고, 지우면 DB 에서도 빠지므로 오래 재사용해도 안전하다.
+ */
+const signSheetUrlCached = unstable_cache(
+  (path: string) => signSheetUrl(path, 60 * 60 * 12), // 12시간 유효한 URL
+  ["sheet-signed-url"],
+  { revalidate: 60 * 60 * 6 } // 6시간 동안 같은 URL 재사용
+);
 
 export async function listContis(): Promise<ContiSummary[]> {
   const { data, error } = await db
@@ -45,7 +58,7 @@ export async function getConti(id: string): Promise<Conti | null> {
 
   // 악보마다 열람용 임시 URL 을 붙인다
   const sheets: Sheet[] = await Promise.all(
-    (sheetRows ?? []).map(async (s: Sheet) => ({ ...s, url: await signSheetUrl(s.storage_path) }))
+    (sheetRows ?? []).map(async (s: Sheet) => ({ ...s, url: await signSheetUrlCached(s.storage_path) }))
   );
 
   return {

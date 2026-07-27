@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { saveAnnotation, updateSong } from "@/app/actions";
+import { getPdfDocument } from "@/lib/pdf";
 import type { Annotation, Conti, Stroke } from "@/lib/types";
 import type { Tool } from "./AnnotationCanvas";
 import ReferencePanel from "./ReferencePanel";
@@ -199,6 +200,24 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
     const delta = elRect.left + elRect.width / 2 - (navRect.left + navRect.width / 2);
     nav.scrollBy({ left: delta, behavior: "smooth" });
   }, [songIndex]);
+
+  // 옆 곡(다음·이전) 악보를 미리 받아둔다 → 곡을 넘길 때 바로 뜬다.
+  // URL 이 캐시돼 브라우저가 파일을 재사용하므로 미리 받아도 낭비가 아니다.
+  useEffect(() => {
+    const warm = (i: number) => {
+      for (const sheet of songs[i]?.sheets ?? []) {
+        if (!sheet.url) continue;
+        if (sheet.kind === "image") {
+          const img = new Image();
+          img.src = sheet.url;
+        } else {
+          void getPdfDocument(sheet.url).catch(() => {});
+        }
+      }
+    };
+    warm(songIndex + 1);
+    warm(songIndex - 1);
+  }, [songIndex, songs]);
 
   // 하단 패널 손잡이 끌기 — 악보 ↔ 유튜브 분할 조절
   const startPanelDrag = useCallback((e: React.PointerEvent) => {
