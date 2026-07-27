@@ -36,7 +36,9 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
   const [showOthers, setShowOthers] = useState(true);
   const [fit, setFit] = useState<"contain" | "width">("contain");
 
-  const [panelOpen, setPanelOpen] = useState(true);
+  // 하단 패널 높이(px). 0 이면 접힌 상태. 손잡이를 끌어 악보 ↔ 유튜브 분할을 조절한다.
+  const [panelH, setPanelH] = useState(300);
+  const lastPanelH = useRef(300);
   const [panelTab, setPanelTab] = useState<"ref" | "memo">("ref");
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -46,6 +48,9 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
   const [lastKey, setLastKey] = useState("");
   const pedalTestRef = useRef(pedalTest);
   pedalTestRef.current = pedalTest;
+
+  // 상단 곡 탭 스크롤 컨테이너 (곡이 많을 때 활성 탭을 가운데로 보낸다)
+  const navRef = useRef<HTMLElement>(null);
 
   // ── 내 필기 / 남의 필기 ──────────────────────────────
   const [mine, setMine] = useState<Record<string, Stroke[]>>(() => {
@@ -184,12 +189,59 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
 
   const selectSong = useCallback((i: number) => goTo(i, 0), [goTo]);
 
+  // 곡이 바뀌면 상단 탭을 가운데로 스크롤 (곡이 많을 때 활성 탭이 화면 밖에 숨지 않게)
+  useEffect(() => {
+    const nav = navRef.current;
+    const el = nav?.children[songIndex] as HTMLElement | undefined;
+    if (!nav || !el) return;
+    const navRect = nav.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const delta = elRect.left + elRect.width / 2 - (navRect.left + navRect.width / 2);
+    nav.scrollBy({ left: delta, behavior: "smooth" });
+  }, [songIndex]);
+
+  // 하단 패널 손잡이 끌기 — 악보 ↔ 유튜브 분할 조절
+  const startPanelDrag = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    const onMove = (ev: PointerEvent) => {
+      const max = window.innerHeight * 0.85;
+      // 손잡이·탭 줄(약 40px)이 내용 위에 있으므로 보정해서 내용 높이를 맞춘다
+      const h = Math.max(0, Math.min(max, window.innerHeight - ev.clientY - 40));
+      setPanelH(h);
+      if (h > 0) lastPanelH.current = h;
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }, []);
+
+  // 접기/펼치기 — 높이만 0 ↔ 이전 높이로. 내용은 계속 마운트되어 재생이 끊기지 않는다.
+  const togglePanel = useCallback(() => {
+    setPanelH((h) => {
+      if (h > 0) {
+        lastPanelH.current = h;
+        return 0;
+      }
+      return lastPanelH.current || 300;
+    });
+  }, []);
+
+  const openPanel = useCallback(() => {
+    setPanelH((h) => (h > 0 ? h : lastPanelH.current || 300));
+  }, []);
+
   // 키보드 · 블루투스 페이지터너
   // 페달마다 보내는 키가 달라서 (방향키 / PageUp·Down / 스페이스 / Enter / 미디어키 등)
   // 넘어갈 만한 키를 넓게 받는다. 정확한 키는 상단 "페달" 버튼으로 확인할 수 있다.
   useEffect(() => {
+    // key 와 code 를 모두 본다. 아이폰(iOS Safari)에서는 e.key 가 비고 e.code 만 오는
+    // 경우가 있어서, code 로도 넘길 수 있게 폭을 넓힌다.
     const NEXT = ["ArrowRight", "ArrowDown", "PageDown", "Right", "Down", "MediaTrackNext", "AudioVolumeDown"];
     const PREV = ["ArrowLeft", "ArrowUp", "PageUp", "Left", "Up", "MediaTrackPrevious", "AudioVolumeUp"];
+    const has = (list: string[], e: KeyboardEvent) => list.includes(e.key) || list.includes(e.code);
 
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
@@ -202,8 +254,8 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
       const k = e.key;
 
       // 스페이스·Enter 는 버튼에 포커스가 없을 때만 "다음" 으로 (버튼 클릭과 겹치지 않게)
-      const goNext = NEXT.includes(k) || ((k === " " || k === "Enter") && !onButton);
-      const goPrev = PREV.includes(k);
+      const goNext = has(NEXT, e) || ((k === " " || k === "Enter") && !onButton);
+      const goPrev = has(PREV, e);
 
       if (goNext) {
         e.preventDefault();
@@ -218,8 +270,19 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
         undo();
       }
     };
+
+    // 페달 확인 모드일 때만: keyup 도 화면에 보여준다. (기기가 keydown 은 안 주고
+    // keyup 만 주는지, 아니면 아무 이벤트도 안 오는지 아이폰에서 구분하기 위함)
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (pedalTestRef.current) setLastKey(`${e.key || "?"}  ·  code: ${e.code || "?"}  (뗌)`);
+    };
+
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKeyUp);
+    };
   }, [next, prev, undo]);
 
   // 스와이프 (필기 중일 때는 캔버스가 가져간다)
@@ -326,7 +389,10 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
       </header>
 
       {/* 곡 목록 */}
-      <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-ink-800 px-2 py-1.5">
+      <nav
+        ref={navRef}
+        className="flex shrink-0 gap-1 overflow-x-auto border-b border-ink-800 px-2 py-1.5"
+      >
         {songs.map((s, i) => (
           <button
             key={s.id}
@@ -503,16 +569,26 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
         )}
       </div>
 
-      {/* 하단 패널 */}
-      <section className="shrink-0 border-t border-ink-800 bg-ink-950">
-        <div className="flex items-center gap-1 px-2 py-1">
+      {/* 하단 패널 — 위 손잡이를 끌어 악보 ↔ 유튜브 크기를 조절한다.
+          내용은 접어도 계속 마운트되어 유튜브 재생이 끊기지 않는다. */}
+      <section className="flex shrink-0 flex-col border-t border-ink-800 bg-ink-950">
+        {/* 드래그 손잡이 */}
+        <div
+          onPointerDown={startPanelDrag}
+          className="no-touch-scroll flex h-4 shrink-0 cursor-row-resize items-center justify-center hover:bg-ink-800"
+          title="끌어서 악보 / 유튜브 크기 조절"
+        >
+          <span className="h-1 w-10 rounded-full bg-ink-600" />
+        </div>
+
+        <div className="flex items-center gap-1 px-2 pb-1">
           <button
             onClick={() => {
               setPanelTab("ref");
-              setPanelOpen(true);
+              openPanel();
             }}
             className={`rounded-md px-3 py-1 text-xs ${
-              panelOpen && panelTab === "ref" ? "bg-ink-800 text-white" : "text-ink-400"
+              panelH > 0 && panelTab === "ref" ? "bg-ink-800 text-white" : "text-ink-400"
             }`}
           >
             레퍼런스 {song.references.length > 0 && `(${song.references.length})`}
@@ -520,32 +596,38 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
           <button
             onClick={() => {
               setPanelTab("memo");
-              setPanelOpen(true);
+              openPanel();
             }}
             className={`rounded-md px-3 py-1 text-xs ${
-              panelOpen && panelTab === "memo" ? "bg-ink-800 text-white" : "text-ink-400"
+              panelH > 0 && panelTab === "memo" ? "bg-ink-800 text-white" : "text-ink-400"
             }`}
           >
             곡 메모
           </button>
           <div className="flex-1" />
           <button
-            onClick={() => setPanelOpen((o) => !o)}
+            onClick={togglePanel}
             className="rounded-md px-2 py-1 text-xs text-ink-400 hover:text-white"
           >
-            {panelOpen ? "▾ 접기" : "▴ 펼치기"}
+            {panelH > 0 ? "▾ 접기" : "▴ 펼치기"}
           </button>
         </div>
 
-        {panelOpen && (
-          <div className="h-[38dvh] border-t border-ink-800 sm:h-64">
-            {panelTab === "ref" ? (
-              <ReferencePanel references={song.references} songTitle={song.title} />
-            ) : (
-              <SongMemo song={song} contiId={conti.id} />
-            )}
+        {/* 레퍼런스는 항상 마운트 → 접거나 곡메모로 바꿔도 재생이 유지된다.
+            곡 메모는 그 위에 덮어 씌운다. */}
+        <div
+          style={{ height: panelH }}
+          className="relative shrink-0 overflow-hidden border-t border-ink-800"
+        >
+          <div className="h-full">
+            <ReferencePanel references={song.references} songTitle={song.title} />
           </div>
-        )}
+          {panelTab === "memo" && (
+            <div className="absolute inset-0 bg-ink-950">
+              <SongMemo song={song} contiId={conti.id} />
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );
