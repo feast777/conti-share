@@ -29,6 +29,8 @@ create table if not exists song (
   song_key    text not null default '',         -- 곡 키 (G, Am ...)
   bpm         text not null default '',
   memo        text not null default '',         -- 곡별 전체 메모
+  sheet_layout text not null default 'single'   -- 악보 배치: single | vertical | horizontal | grid
+    check (sheet_layout in ('single', 'vertical', 'horizontal', 'grid')),
   created_at  timestamptz not null default now()
 );
 
