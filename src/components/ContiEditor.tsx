@@ -31,6 +31,7 @@ import {
   deleteSong,
   duplicateConti,
   registerSheet,
+  reorderSheets,
   reorderSongs,
   updateConti,
   updateSong,
@@ -229,6 +230,16 @@ function SongCard({
     void updateSong(song.id, contiId, { sheet_layout: v });
   };
 
+  // 악보 순서 이동 — idx 악보를 앞(-1)/뒤(+1)로 한 칸 옮긴다
+  const moveSheet = async (idx: number, dir: -1 | 1) => {
+    const ids = song.sheets.map((s) => s.id);
+    const j = idx + dir;
+    if (j < 0 || j >= ids.length) return;
+    [ids[idx], ids[j]] = [ids[j], ids[idx]];
+    await reorderSheets(song.id, contiId, ids);
+    onRefresh();
+  };
+
   const upload = async (files: FileList | null) => {
     if (!files?.length) return;
 
@@ -336,11 +347,34 @@ function SongCard({
       <div className="mb-3">
         <p className="mb-1.5 text-xs font-medium text-ink-400">악보</p>
         <div className="flex flex-wrap gap-2">
-          {song.sheets.map((sheet) => (
+          {song.sheets.map((sheet, idx) => (
             <span
               key={sheet.id}
-              className="flex items-center gap-2 rounded-lg border border-ink-700 px-2.5 py-1 text-xs"
+              className="flex items-center gap-1.5 rounded-lg border border-ink-700 px-2.5 py-1 text-xs"
             >
+              {song.sheets.length > 1 && (
+                <span className="flex items-center">
+                  <button
+                    onClick={() => moveSheet(idx, -1)}
+                    disabled={idx === 0}
+                    className="px-1 text-ink-500 hover:text-white disabled:opacity-30"
+                    title="앞으로"
+                    aria-label="악보 앞으로"
+                  >
+                    ◀
+                  </button>
+                  <span className="w-3 text-center text-ink-600">{idx + 1}</span>
+                  <button
+                    onClick={() => moveSheet(idx, 1)}
+                    disabled={idx === song.sheets.length - 1}
+                    className="px-1 text-ink-500 hover:text-white disabled:opacity-30"
+                    title="뒤로"
+                    aria-label="악보 뒤로"
+                  >
+                    ▶
+                  </button>
+                </span>
+              )}
               <span className="max-w-40 truncate">{sheet.file_name || sheet.kind}</span>
               <span className="text-ink-600">
                 {sheet.kind === "pdf" ? `${sheet.page_count}p` : "img"}
