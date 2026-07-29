@@ -58,7 +58,7 @@ export async function listContis(
  *  화면에서는 이 목록을 부모별로 걸러서 쓴다. */
 export async function listAllFolders(): Promise<FolderSummary[]> {
   const [{ data: folders }, { data: contis }] = await Promise.all([
-    db.from("folder").select("id, name, parent_id").order("name"),
+    db.from("folder").select("id, name, parent_id, order_index, created_at").order("name"),
     db.from("conti").select("folder_id"),
   ]);
 
@@ -77,6 +77,8 @@ export async function listAllFolders(): Promise<FolderSummary[]> {
     id: f.id as string,
     name: f.name as string,
     parent_id: (f.parent_id as string | null) ?? null,
+    order_index: (f.order_index as number) ?? 0,
+    created_at: (f.created_at as string) ?? "",
     conti_count: contiCount.get(f.id as string) ?? 0,
     subfolder_count: subCount.get(f.id as string) ?? 0,
   }));

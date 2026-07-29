@@ -85,6 +85,8 @@ export type FolderSummary = {
   id: string;
   name: string;
   parent_id: string | null;
+  order_index: number;
+  created_at: string;
   conti_count: number;
   subfolder_count: number;
 };
