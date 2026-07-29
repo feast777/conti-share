@@ -149,6 +149,46 @@ export async function duplicateConti(id: string) {
 }
 
 // ─────────────────────────────────────────────
+// 폴더
+// ─────────────────────────────────────────────
+export async function createFolder(name: string) {
+  const session = await requireSession();
+  const clean = name.trim();
+  if (!clean) return;
+  const { error } = await db.from("folder").insert({ name: clean, created_by: session.name });
+  if (error) throw error;
+  revalidatePath("/");
+}
+
+export async function renameFolder(id: string, name: string) {
+  await requireSession();
+  const clean = name.trim();
+  if (!clean) return;
+  const { error } = await db.from("folder").update({ name: clean }).eq("id", id);
+  if (error) throw error;
+  revalidatePath("/");
+  revalidatePath(`/folder/${id}`);
+}
+
+export async function deleteFolder(id: string) {
+  await requireSession();
+  // conti.folder_id 는 on delete set null → 콘티는 지워지지 않고 폴더 밖으로 나온다
+  const { error } = await db.from("folder").delete().eq("id", id);
+  if (error) throw error;
+  revalidatePath("/");
+  redirect("/");
+}
+
+/** 콘티를 폴더로 옮긴다. folderId 가 null 이면 폴더 밖으로 뺀다. */
+export async function moveConti(contiId: string, folderId: string | null) {
+  await requireSession();
+  const { error } = await db.from("conti").update({ folder_id: folderId }).eq("id", contiId);
+  if (error) throw error;
+  revalidatePath("/");
+  if (folderId) revalidatePath(`/folder/${folderId}`);
+}
+
+// ─────────────────────────────────────────────
 // 곡
 // ─────────────────────────────────────────────
 export async function addSong(contiId: string, title: string) {
