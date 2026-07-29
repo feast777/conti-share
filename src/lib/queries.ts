@@ -54,26 +54,42 @@ export async function listContis(
   }));
 }
 
-/** 폴더 목록 (각 폴더의 콘티 개수 포함) */
-export async function listFolders(): Promise<FolderSummary[]> {
-  const { data, error } = await db
-    .from("folder")
-    .select("id, name, conti(count)")
-    .order("name");
+/** 모든 폴더 (각 폴더의 콘티 개수 · 하위 폴더 개수 · 상위 폴더 포함).
+ *  화면에서는 이 목록을 부모별로 걸러서 쓴다. */
+export async function listAllFolders(): Promise<FolderSummary[]> {
+  const [{ data: folders }, { data: contis }] = await Promise.all([
+    db.from("folder").select("id, name, parent_id").order("name"),
+    db.from("conti").select("folder_id"),
+  ]);
 
-  if (error) throw error;
+  const contiCount = new Map<string, number>();
+  for (const c of contis ?? []) {
+    const fid = (c as { folder_id: string | null }).folder_id;
+    if (fid) contiCount.set(fid, (contiCount.get(fid) ?? 0) + 1);
+  }
+  const subCount = new Map<string, number>();
+  for (const f of folders ?? []) {
+    const p = (f as { parent_id: string | null }).parent_id;
+    if (p) subCount.set(p, (subCount.get(p) ?? 0) + 1);
+  }
 
-  return (data ?? []).map((row: Record<string, unknown>) => ({
-    id: row.id as string,
-    name: row.name as string,
-    conti_count: (row.conti as { count: number }[] | null)?.[0]?.count ?? 0,
+  return (folders ?? []).map((f: Record<string, unknown>) => ({
+    id: f.id as string,
+    name: f.name as string,
+    parent_id: (f.parent_id as string | null) ?? null,
+    conti_count: contiCount.get(f.id as string) ?? 0,
+    subfolder_count: subCount.get(f.id as string) ?? 0,
   }));
 }
 
 /** 폴더 하나 */
-export async function getFolder(id: string): Promise<{ id: string; name: string } | null> {
-  const { data } = await db.from("folder").select("id, name").eq("id", id).maybeSingle();
-  return data ? { id: data.id as string, name: data.name as string } : null;
+export async function getFolder(
+  id: string
+): Promise<{ id: string; name: string; parent_id: string | null } | null> {
+  const { data } = await db.from("folder").select("id, name, parent_id").eq("id", id).maybeSingle();
+  return data
+    ? { id: data.id as string, name: data.name as string, parent_id: (data.parent_id as string | null) ?? null }
+    : null;
 }
 
 /** 콘티 하나를 곡 · 악보 · 레퍼런스까지 통째로 읽어온다. */

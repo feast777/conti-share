@@ -1,6 +1,6 @@
 import ContiBrowser from "@/components/ContiBrowser";
 import { requireSession } from "@/lib/auth";
-import { listContis, listFolders } from "@/lib/queries";
+import { listAllFolders, listContis } from "@/lib/queries";
 import { createConti, logout } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const session = await requireSession();
   const today = new Date().toISOString().slice(0, 10);
-  const [folders, contis] = await Promise.all([listFolders(), listContis(null)]);
+  const [allFolders, contis] = await Promise.all([listAllFolders(), listContis(null)]);
+  const topFolders = allFolders.filter((f) => f.parent_id === null);
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-8">
@@ -40,7 +41,7 @@ export default async function HomePage() {
         </button>
       </form>
 
-      <ContiBrowser folders={folders} contis={contis} currentFolderId={null} />
+      <ContiBrowser currentFolderId={null} path={[]} subfolders={topFolders} contis={contis} />
     </main>
   );
 }

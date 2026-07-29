@@ -4,10 +4,22 @@ import Link from "next/link";
 import { deleteFolder, renameFolder } from "@/app/actions";
 import DebouncedField from "./DebouncedField";
 
-export default function FolderHeader({ id, name }: { id: string; name: string }) {
+export default function FolderHeader({
+  id,
+  name,
+  parentId,
+}: {
+  id: string;
+  name: string;
+  parentId: string | null;
+}) {
   return (
-    <header className="mb-6 flex items-center gap-2">
-      <Link href="/" className="text-lg text-ink-400 hover:text-white" aria-label="홈">
+    <header className="mb-4 flex items-center gap-2">
+      <Link
+        href={parentId ? `/folder/${parentId}` : "/"}
+        className="text-lg text-ink-400 hover:text-white"
+        aria-label="위로"
+      >
         ‹
       </Link>
       <span className="text-lg">📁</span>

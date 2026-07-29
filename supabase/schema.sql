@@ -9,9 +9,13 @@ create extension if not exists "pgcrypto";
 create table if not exists folder (
   id          uuid primary key default gen_random_uuid(),
   name        text not null,
+  -- 상위 폴더 (비어있으면 최상위). 폴더 삭제 시 하위 폴더는 액션에서 한 단계 위로 올린다.
+  parent_id   uuid references folder(id) on delete set null,
   created_by  text not null default '',
   created_at  timestamptz not null default now()
 );
+
+create index if not exists folder_parent_idx on folder (parent_id);
 
 -- ─────────────────────────────────────────────
 -- 콘티 (한 번의 예배에서 부를 곡 묶음)
