@@ -76,6 +76,7 @@ export type ContiSummary = {
 export type Folder = {
   id: string;
   name: string;
+  parent_id: string | null;
   created_by: string;
   created_at: string;
 };
@@ -83,5 +84,7 @@ export type Folder = {
 export type FolderSummary = {
   id: string;
   name: string;
+  parent_id: string | null;
   conti_count: number;
+  subfolder_count: number;
 };

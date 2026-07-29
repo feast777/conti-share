@@ -15,8 +15,8 @@ import {
 } from "@dnd-kit/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { createFolder, moveConti } from "@/app/actions";
+import { Fragment, useState, useTransition } from "react";
+import { createFolder, moveConti, moveFolder } from "@/app/actions";
 import PdfButton from "@/components/PdfButton";
 import type { ContiSummary, FolderSummary } from "@/lib/types";
 
@@ -26,20 +26,21 @@ function formatDate(iso: string) {
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]})`;
 }
 
-const ROOT = "__root__";
+const ROOT = "root";
 
 type Props = {
-  folders: FolderSummary[];
-  contis: ContiSummary[];
   currentFolderId: string | null; // null = 홈
+  path: { id: string; name: string }[]; // 조상들(홈 제외, 현재 폴더 제외) — 최상위→부모 순
+  subfolders: FolderSummary[]; // 현재 위치의 하위 폴더
+  contis: ContiSummary[]; // 현재 위치의 콘티
 };
 
-export default function ContiBrowser({ folders, contis, currentFolderId }: Props) {
+export default function ContiBrowser({ currentFolderId, path, subfolders, contis }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const refresh = () => startTransition(() => router.refresh());
 
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [active, setActive] = useState<{ kind: "c" | "f"; id: string } | null>(null);
   const [newFolder, setNewFolder] = useState("");
 
   const sensors = useSensors(
@@ -49,53 +50,62 @@ export default function ContiBrowser({ folders, contis, currentFolderId }: Props
   );
 
   const isHome = currentFolderId === null;
-  // 목적지: 홈이면 모든 폴더, 폴더 안이면 현재 폴더는 빼고 나머지 폴더
-  const destinations = isHome ? folders : folders.filter((f) => f.id !== currentFolderId);
-  const activeConti = contis.find((c) => c.id === activeId) ?? null;
+
+  const parseId = (raw: string): { kind: "c" | "f"; id: string } => {
+    const [kind, ...rest] = raw.split(":");
+    return { kind: kind as "c" | "f", id: rest.join(":") };
+  };
 
   const onDragEnd = (e: DragEndEvent) => {
-    setActiveId(null);
-    const { active, over } = e;
+    setActive(null);
+    const { active: a, over } = e;
     if (!over) return;
-    const conti = contis.find((c) => c.id === String(active.id));
-    if (!conti) return;
-    const target = String(over.id) === ROOT ? null : String(over.id);
-    if ((conti.folder_id ?? null) === target) return; // 이미 그 위치면 무시
-    void moveConti(conti.id, target).then(refresh);
+    const { kind, id } = parseId(String(a.id));
+    const overId = String(over.id);
+    const target = overId === ROOT ? null : overId.startsWith("f:") ? overId.slice(2) : undefined;
+    if (target === undefined) return;
+
+    if (kind === "c") {
+      const conti = contis.find((c) => c.id === id);
+      if (!conti || (conti.folder_id ?? null) === target) return;
+      void moveConti(id, target).then(refresh);
+    } else {
+      if (id === target) return; // 자기 자신 위로는 무시
+      const folder = subfolders.find((f) => f.id === id);
+      if (!folder || (folder.parent_id ?? null) === target) return;
+      void moveFolder(id, target).then(refresh); // 사이클은 서버에서 막는다
+    }
   };
+
+  const activeConti = active?.kind === "c" ? contis.find((c) => c.id === active.id) ?? null : null;
+  const activeFolder = active?.kind === "f" ? subfolders.find((f) => f.id === active.id) ?? null : null;
 
   const handleAddFolder = async () => {
     const name = newFolder.trim();
     if (!name) return;
     setNewFolder("");
-    await createFolder(name);
+    await createFolder(name, currentFolderId);
     refresh();
   };
 
   return (
     <DndContext
       sensors={sensors}
-      onDragStart={(e: DragStartEvent) => setActiveId(String(e.active.id))}
+      onDragStart={(e: DragStartEvent) => setActive(parseId(String(e.active.id)))}
       onDragEnd={onDragEnd}
-      onDragCancel={() => setActiveId(null)}
+      onDragCancel={() => setActive(null)}
     >
-      {/* 폴더 / 목적지 */}
-      <section className="mb-6">
-        <p className="mb-2 text-sm font-medium text-ink-400">폴더</p>
+      {!isHome && <Breadcrumb path={path} />}
+
+      {/* 폴더 */}
+      <section className="mb-6 mt-3">
+        <p className="mb-2 text-sm font-medium text-ink-400">{isHome ? "폴더" : "하위 폴더"}</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {!isHome && <RootDrop />}
-          {destinations.map((f) => (
-            <FolderDrop key={f.id} folder={f} />
+          {subfolders.map((f) => (
+            <FolderCard key={f.id} folder={f} draggingId={active?.kind === "f" ? active.id : null} />
           ))}
-          {isHome && (
-            <NewFolder value={newFolder} onChange={setNewFolder} onAdd={handleAddFolder} />
-          )}
+          <NewFolder value={newFolder} onChange={setNewFolder} onAdd={handleAddFolder} />
         </div>
-        {isHome && folders.length === 0 && (
-          <p className="mt-1 text-xs text-ink-600">
-            폴더를 만들고, 아래 콘티를 폴더 위로 끌어다 놓으면 정리됩니다.
-          </p>
-        )}
       </section>
 
       {/* 콘티 */}
@@ -107,12 +117,12 @@ export default function ContiBrowser({ folders, contis, currentFolderId }: Props
           <p className="rounded-xl border border-dashed border-ink-700 p-8 text-center text-sm text-ink-600">
             {isHome
               ? "폴더 밖 콘티가 없습니다."
-              : "이 폴더에 콘티가 없습니다. 콘티 목록에서 여기로 끌어다 놓으세요."}
+              : "이 폴더에 콘티가 없습니다. 콘티를 여기로 끌어다 놓으세요."}
           </p>
         ) : (
           <ul className="space-y-2">
             {contis.map((c) => (
-              <ContiCard key={c.id} conti={c} dimmed={activeId === c.id} />
+              <ContiCard key={c.id} conti={c} dimmed={active?.kind === "c" && active.id === c.id} />
             ))}
           </ul>
         )}
@@ -126,6 +136,10 @@ export default function ContiBrowser({ folders, contis, currentFolderId }: Props
               {formatDate(activeConti.service_date)} · {activeConti.song_count}곡
             </p>
           </div>
+        ) : activeFolder ? (
+          <div className="rounded-xl border border-accent bg-ink-800 px-4 py-3 shadow-2xl">
+            <span className="text-sm font-medium text-white">📁 {activeFolder.name}</span>
+          </div>
         ) : null}
       </DragOverlay>
     </DndContext>
@@ -134,40 +148,61 @@ export default function ContiBrowser({ folders, contis, currentFolderId }: Props
 
 // ─────────────────────────────────────────────
 
-function FolderDrop({ folder }: { folder: FolderSummary }) {
-  const { setNodeRef, isOver } = useDroppable({ id: folder.id });
+function Breadcrumb({ path }: { path: { id: string; name: string }[] }) {
+  return (
+    <nav className="flex flex-wrap items-center gap-1 text-sm text-ink-400">
+      <Crumb dropId={ROOT} href="/" label="🏠 홈" />
+      {path.map((a) => (
+        <Fragment key={a.id}>
+          <span className="text-ink-600">›</span>
+          <Crumb dropId={`f:${a.id}`} href={`/folder/${a.id}`} label={a.name} />
+        </Fragment>
+      ))}
+    </nav>
+  );
+}
+
+function Crumb({ dropId, href, label }: { dropId: string; href: string; label: string }) {
+  const { setNodeRef, isOver } = useDroppable({ id: dropId });
   return (
     <Link
       ref={setNodeRef}
-      href={`/folder/${folder.id}`}
-      className={`flex flex-col rounded-xl border p-3 transition ${
-        isOver
-          ? "border-accent bg-accent-soft"
-          : "border-ink-700 bg-ink-900 hover:border-ink-600"
+      href={href}
+      className={`rounded px-1.5 py-0.5 transition ${
+        isOver ? "bg-accent-soft text-white" : "hover:text-white"
       }`}
     >
-      <span className="text-lg">📁</span>
-      <span className="mt-1 truncate text-sm font-medium text-white">{folder.name}</span>
-      <span className="text-xs text-ink-600">{folder.conti_count}개</span>
+      {label}
     </Link>
   );
 }
 
-function RootDrop() {
-  const { setNodeRef, isOver } = useDroppable({ id: ROOT });
+function FolderCard({ folder, draggingId }: { folder: FolderSummary; draggingId: string | null }) {
+  const drop = useDroppable({ id: `f:${folder.id}` });
+  const drag = useDraggable({ id: `f:${folder.id}` });
+  const setRef = (n: HTMLElement | null) => {
+    drop.setNodeRef(n);
+    drag.setNodeRef(n);
+  };
+  const dimmed = draggingId === folder.id;
   return (
     <Link
-      ref={setNodeRef}
-      href="/"
+      ref={setRef}
+      href={`/folder/${folder.id}`}
+      draggable={false}
+      {...drag.listeners}
+      {...drag.attributes}
       className={`flex flex-col rounded-xl border p-3 transition ${
-        isOver
+        drop.isOver && !dimmed
           ? "border-accent bg-accent-soft"
           : "border-ink-700 bg-ink-900 hover:border-ink-600"
-      }`}
+      } ${dimmed ? "opacity-40" : ""}`}
     >
-      <span className="text-lg">🏠</span>
-      <span className="mt-1 text-sm font-medium text-white">폴더 밖으로</span>
-      <span className="text-xs text-ink-600">전체 홈</span>
+      <span className="text-lg">📁</span>
+      <span className="mt-1 truncate text-sm font-medium text-white">{folder.name}</span>
+      <span className="text-xs text-ink-600">
+        {folder.conti_count}개{folder.subfolder_count > 0 && ` · 폴더 ${folder.subfolder_count}`}
+      </span>
     </Link>
   );
 }
@@ -202,7 +237,7 @@ function NewFolder({
 
 function ContiCard({ conti, dimmed }: { conti: ContiSummary; dimmed: boolean }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef } = useDraggable({
-    id: conti.id,
+    id: `c:${conti.id}`,
   });
   return (
     <li

@@ -151,13 +151,39 @@ export async function duplicateConti(id: string) {
 // ─────────────────────────────────────────────
 // 폴더
 // ─────────────────────────────────────────────
-export async function createFolder(name: string) {
+export async function createFolder(name: string, parentId: string | null = null) {
   const session = await requireSession();
   const clean = name.trim();
   if (!clean) return;
-  const { error } = await db.from("folder").insert({ name: clean, created_by: session.name });
+  const { error } = await db
+    .from("folder")
+    .insert({ name: clean, parent_id: parentId, created_by: session.name });
   if (error) throw error;
   revalidatePath("/");
+  if (parentId) revalidatePath(`/folder/${parentId}`);
+}
+
+/** 폴더를 다른 폴더(또는 최상위)로 옮긴다. 자기 자신·자기 하위로는 못 옮긴다(사이클 방지). */
+export async function moveFolder(folderId: string, parentId: string | null) {
+  await requireSession();
+  if (folderId === parentId) return;
+
+  // parentId 의 조상들을 거슬러 올라가며 folderId 가 나오면 사이클 → 거부
+  let cur: string | null = parentId;
+  const seen = new Set<string>();
+  while (cur) {
+    if (cur === folderId) return;
+    if (seen.has(cur)) break;
+    seen.add(cur);
+    const { data } = await db.from("folder").select("parent_id").eq("id", cur).maybeSingle();
+    cur = (data?.parent_id as string | null) ?? null;
+  }
+
+  const { error } = await db.from("folder").update({ parent_id: parentId }).eq("id", folderId);
+  if (error) throw error;
+  revalidatePath("/");
+  revalidatePath(`/folder/${folderId}`);
+  if (parentId) revalidatePath(`/folder/${parentId}`);
 }
 
 export async function renameFolder(id: string, name: string) {
@@ -172,10 +198,21 @@ export async function renameFolder(id: string, name: string) {
 
 export async function deleteFolder(id: string) {
   await requireSession();
-  // conti.folder_id 는 on delete set null → 콘티는 지워지지 않고 폴더 밖으로 나온다
+  // 이 폴더의 상위를 알아내, 하위 폴더·콘티를 한 단계 위로 올린다 (콘티는 지워지지 않는다)
+  const { data: f } = await db.from("folder").select("parent_id").eq("id", id).maybeSingle();
+  const parent = (f?.parent_id as string | null) ?? null;
+
+  await db.from("folder").update({ parent_id: parent }).eq("parent_id", id);
+  await db.from("conti").update({ folder_id: parent }).eq("folder_id", id);
+
   const { error } = await db.from("folder").delete().eq("id", id);
   if (error) throw error;
+
   revalidatePath("/");
+  if (parent) {
+    revalidatePath(`/folder/${parent}`);
+    redirect(`/folder/${parent}`);
+  }
   redirect("/");
 }
 
