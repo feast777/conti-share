@@ -155,10 +155,23 @@ export async function createFolder(name: string, parentId: string | null = null)
   const session = await requireSession();
   const clean = name.trim();
   if (!clean) return;
+  // 같은 위치의 폴더 개수를 순서값으로 (맨 뒤에 추가)
+  const q = db.from("folder").select("id", { count: "exact", head: true });
+  const { count } = await (parentId ? q.eq("parent_id", parentId) : q.is("parent_id", null));
   const { error } = await db
     .from("folder")
-    .insert({ name: clean, parent_id: parentId, created_by: session.name });
+    .insert({ name: clean, parent_id: parentId, order_index: count ?? 0, created_by: session.name });
   if (error) throw error;
+  revalidatePath("/");
+  if (parentId) revalidatePath(`/folder/${parentId}`);
+}
+
+/** 같은 위치의 폴더들 순서를 다시 매긴다. */
+export async function reorderFolders(parentId: string | null, orderedIds: string[]) {
+  await requireSession();
+  await Promise.all(
+    orderedIds.map((id, i) => db.from("folder").update({ order_index: i }).eq("id", id))
+  );
   revalidatePath("/");
   if (parentId) revalidatePath(`/folder/${parentId}`);
 }

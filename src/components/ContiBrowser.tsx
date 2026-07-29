@@ -15,8 +15,8 @@ import {
 } from "@dnd-kit/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Fragment, useState, useTransition } from "react";
-import { createFolder, moveConti, moveFolder } from "@/app/actions";
+import { Fragment, useEffect, useState, useTransition } from "react";
+import { createFolder, moveConti, moveFolder, reorderFolders } from "@/app/actions";
 import PdfButton from "@/components/PdfButton";
 import type { ContiSummary, FolderSummary } from "@/lib/types";
 
@@ -27,6 +27,33 @@ function formatDate(iso: string) {
 }
 
 const ROOT = "root";
+
+type SortKey = "manual" | "name-asc" | "name-desc" | "newest" | "oldest";
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: "manual", label: "직접 정렬" },
+  { key: "name-asc", label: "이름 ↑" },
+  { key: "name-desc", label: "이름 ↓" },
+  { key: "newest", label: "최신순" },
+  { key: "oldest", label: "오래된순" },
+];
+const SORT_STORAGE_KEY = "conti.folderSort";
+
+function sortFolders(list: FolderSummary[], sort: SortKey): FolderSummary[] {
+  const arr = [...list];
+  const byName = (a: FolderSummary, b: FolderSummary) => a.name.localeCompare(b.name, "ko");
+  switch (sort) {
+    case "name-asc":
+      return arr.sort(byName);
+    case "name-desc":
+      return arr.sort((a, b) => byName(b, a));
+    case "newest":
+      return arr.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+    case "oldest":
+      return arr.sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
+    default: // manual — order_index, 같으면 이름
+      return arr.sort((a, b) => a.order_index - b.order_index || byName(a, b));
+  }
+}
 
 type Props = {
   currentFolderId: string | null; // null = 홈
@@ -42,6 +69,28 @@ export default function ContiBrowser({ currentFolderId, path, subfolders, contis
 
   const [active, setActive] = useState<{ kind: "c" | "f"; id: string } | null>(null);
   const [newFolder, setNewFolder] = useState("");
+
+  // 정렬은 기기별 취향(로컬 저장). "직접 정렬"만 팀 공용 순서(order_index)를 쓴다.
+  const [sort, setSort] = useState<SortKey>("manual");
+  useEffect(() => {
+    const saved = localStorage.getItem(SORT_STORAGE_KEY) as SortKey | null;
+    if (saved) setSort(saved);
+  }, []);
+  const changeSort = (s: SortKey) => {
+    setSort(s);
+    localStorage.setItem(SORT_STORAGE_KEY, s);
+  };
+
+  const sortedFolders = sortFolders(subfolders, sort);
+  const manual = sort === "manual";
+
+  const moveFolderPos = (idx: number, dir: -1 | 1) => {
+    const ids = sortedFolders.map((f) => f.id);
+    const j = idx + dir;
+    if (j < 0 || j >= ids.length) return;
+    [ids[idx], ids[j]] = [ids[j], ids[idx]];
+    void reorderFolders(currentFolderId, ids).then(refresh);
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -99,13 +148,46 @@ export default function ContiBrowser({ currentFolderId, path, subfolders, contis
 
       {/* 폴더 */}
       <section className="mb-6 mt-3">
-        <p className="mb-2 text-sm font-medium text-ink-400">{isHome ? "폴더" : "하위 폴더"}</p>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="text-sm font-medium text-ink-400">{isHome ? "폴더" : "하위 폴더"}</p>
+          {subfolders.length > 1 && (
+            <select
+              value={sort}
+              onChange={(e) => changeSort(e.target.value as SortKey)}
+              className="rounded-md border border-ink-700 bg-ink-800 px-2 py-1 text-xs text-ink-200"
+              aria-label="폴더 정렬"
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {subfolders.map((f) => (
-            <FolderCard key={f.id} folder={f} draggingId={active?.kind === "f" ? active.id : null} />
+          {sortedFolders.map((f, i) => (
+            <FolderCard
+              key={f.id}
+              folder={f}
+              draggingId={active?.kind === "f" ? active.id : null}
+              reorder={
+                manual
+                  ? {
+                      canLeft: i > 0,
+                      canRight: i < sortedFolders.length - 1,
+                      onLeft: () => moveFolderPos(i, -1),
+                      onRight: () => moveFolderPos(i, 1),
+                    }
+                  : null
+              }
+            />
           ))}
           <NewFolder value={newFolder} onChange={setNewFolder} onAdd={handleAddFolder} />
         </div>
+        {manual && subfolders.length > 1 && (
+          <p className="mt-1 text-xs text-ink-600">◀ ▶ 로 순서를 바꿀 수 있어요.</p>
+        )}
       </section>
 
       {/* 콘티 */}
@@ -177,7 +259,17 @@ function Crumb({ dropId, href, label }: { dropId: string; href: string; label: s
   );
 }
 
-function FolderCard({ folder, draggingId }: { folder: FolderSummary; draggingId: string | null }) {
+type Reorder = { canLeft: boolean; canRight: boolean; onLeft: () => void; onRight: () => void };
+
+function FolderCard({
+  folder,
+  draggingId,
+  reorder,
+}: {
+  folder: FolderSummary;
+  draggingId: string | null;
+  reorder: Reorder | null;
+}) {
   const drop = useDroppable({ id: `f:${folder.id}` });
   const drag = useDraggable({ id: `f:${folder.id}` });
   const setRef = (n: HTMLElement | null) => {
@@ -186,24 +278,52 @@ function FolderCard({ folder, draggingId }: { folder: FolderSummary; draggingId:
   };
   const dimmed = draggingId === folder.id;
   return (
-    <Link
+    <div
       ref={setRef}
-      href={`/folder/${folder.id}`}
-      draggable={false}
       {...drag.listeners}
       {...drag.attributes}
-      className={`flex flex-col rounded-xl border p-3 transition ${
+      className={`relative flex flex-col rounded-xl border p-3 transition ${
         drop.isOver && !dimmed
           ? "border-accent bg-accent-soft"
           : "border-ink-700 bg-ink-900 hover:border-ink-600"
       } ${dimmed ? "opacity-40" : ""}`}
     >
-      <span className="text-lg">📁</span>
-      <span className="mt-1 truncate text-sm font-medium text-white">{folder.name}</span>
-      <span className="text-xs text-ink-600">
-        {folder.conti_count}개{folder.subfolder_count > 0 && ` · 폴더 ${folder.subfolder_count}`}
-      </span>
-    </Link>
+      {reorder && (
+        <div className="absolute right-1 top-1 flex gap-0.5">
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              reorder.onLeft();
+            }}
+            disabled={!reorder.canLeft}
+            className="rounded px-1 text-base text-ink-500 hover:text-white disabled:opacity-30"
+            aria-label="앞으로"
+          >
+            ◀
+          </button>
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              reorder.onRight();
+            }}
+            disabled={!reorder.canRight}
+            className="rounded px-1 text-base text-ink-500 hover:text-white disabled:opacity-30"
+            aria-label="뒤로"
+          >
+            ▶
+          </button>
+        </div>
+      )}
+      <Link href={`/folder/${folder.id}`} draggable={false} className="flex flex-col">
+        <span className="text-lg">📁</span>
+        <span className="mt-1 truncate pr-10 text-sm font-medium text-white">{folder.name}</span>
+        <span className="text-xs text-ink-600">
+          {folder.conti_count}개{folder.subfolder_count > 0 && ` · 폴더 ${folder.subfolder_count}`}
+        </span>
+      </Link>
+    </div>
   );
 }
 
