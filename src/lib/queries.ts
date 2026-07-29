@@ -1,7 +1,15 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { db, signSheetUrl } from "./db";
-import type { Annotation, Conti, ContiSummary, Reference, Sheet, Song } from "./types";
+import type {
+  Annotation,
+  Conti,
+  ContiSummary,
+  FolderSummary,
+  Reference,
+  Sheet,
+  Song,
+} from "./types";
 
 /**
  * 악보 열람용 서명 URL 을 캐시한다.
@@ -15,13 +23,25 @@ const signSheetUrlCached = unstable_cache(
   { revalidate: 60 * 60 * 6 } // 6시간 동안 같은 URL 재사용
 );
 
-export async function listContis(): Promise<ContiSummary[]> {
-  const { data, error } = await db
+/**
+ * 콘티 목록.
+ * - folderId === "all": 전체
+ * - folderId === null: 폴더 밖(folder_id 가 null)인 콘티만
+ * - folderId === "<id>": 그 폴더의 콘티만
+ */
+export async function listContis(
+  folderId: string | null | "all" = "all"
+): Promise<ContiSummary[]> {
+  let q = db
     .from("conti")
-    .select("id, title, service_date, created_by, song(count)")
+    .select("id, title, service_date, created_by, folder_id, song(count)")
     .order("service_date", { ascending: false })
     .order("created_at", { ascending: false });
 
+  if (folderId === null) q = q.is("folder_id", null);
+  else if (folderId !== "all") q = q.eq("folder_id", folderId);
+
+  const { data, error } = await q;
   if (error) throw error;
 
   return (data ?? []).map((row: Record<string, unknown>) => ({
@@ -29,8 +49,31 @@ export async function listContis(): Promise<ContiSummary[]> {
     title: row.title as string,
     service_date: row.service_date as string,
     created_by: row.created_by as string,
+    folder_id: (row.folder_id as string | null) ?? null,
     song_count: (row.song as { count: number }[] | null)?.[0]?.count ?? 0,
   }));
+}
+
+/** 폴더 목록 (각 폴더의 콘티 개수 포함) */
+export async function listFolders(): Promise<FolderSummary[]> {
+  const { data, error } = await db
+    .from("folder")
+    .select("id, name, conti(count)")
+    .order("name");
+
+  if (error) throw error;
+
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    id: row.id as string,
+    name: row.name as string,
+    conti_count: (row.conti as { count: number }[] | null)?.[0]?.count ?? 0,
+  }));
+}
+
+/** 폴더 하나 */
+export async function getFolder(id: string): Promise<{ id: string; name: string } | null> {
+  const { data } = await db.from("folder").select("id, name").eq("id", id).maybeSingle();
+  return data ? { id: data.id as string, name: data.name as string } : null;
 }
 
 /** 콘티 하나를 곡 · 악보 · 레퍼런스까지 통째로 읽어온다. */

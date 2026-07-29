@@ -4,6 +4,16 @@
 create extension if not exists "pgcrypto";
 
 -- ─────────────────────────────────────────────
+-- 폴더 (콘티를 담는 한 단계 폴더)
+-- ─────────────────────────────────────────────
+create table if not exists folder (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  created_by  text not null default '',
+  created_at  timestamptz not null default now()
+);
+
+-- ─────────────────────────────────────────────
 -- 콘티 (한 번의 예배에서 부를 곡 묶음)
 -- ─────────────────────────────────────────────
 create table if not exists conti (
@@ -12,11 +22,14 @@ create table if not exists conti (
   service_date date not null default current_date,
   note         text not null default '',        -- 콘티 전체 안내사항
   created_by   text not null default '',
+  -- 폴더 없으면 null (= 폴더 밖). 폴더 삭제 시 콘티는 폴더 밖으로 나온다.
+  folder_id    uuid references folder(id) on delete set null,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
 
 create index if not exists conti_service_date_idx on conti (service_date desc);
+create index if not exists conti_folder_idx on conti (folder_id);
 
 -- ─────────────────────────────────────────────
 -- 곡
@@ -86,6 +99,7 @@ create index if not exists annotation_sheet_idx on annotation (sheet_id);
 -- RLS: 서버(service role)를 통해서만 접근한다.
 -- 정책을 만들지 않으면 anon/authenticated 키로는 아무것도 읽고 쓸 수 없다.
 -- ─────────────────────────────────────────────
+alter table folder     enable row level security;
 alter table conti      enable row level security;
 alter table song       enable row level security;
 alter table reference  enable row level security;

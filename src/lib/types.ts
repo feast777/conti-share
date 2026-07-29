@@ -69,5 +69,19 @@ export type ContiSummary = {
   title: string;
   service_date: string;
   created_by: string;
+  folder_id: string | null;
   song_count: number;
+};
+
+export type Folder = {
+  id: string;
+  name: string;
+  created_by: string;
+  created_at: string;
+};
+
+export type FolderSummary = {
+  id: string;
+  name: string;
+  conti_count: number;
 };

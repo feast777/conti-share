@@ -1,22 +1,14 @@
-import Link from "next/link";
-import PdfButton from "@/components/PdfButton";
+import ContiBrowser from "@/components/ContiBrowser";
 import { requireSession } from "@/lib/auth";
-import { listContis } from "@/lib/queries";
+import { listContis, listFolders } from "@/lib/queries";
 import { createConti, logout } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
-
-function formatDate(iso: string) {
-  const d = new Date(`${iso}T00:00:00`);
-  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]})`;
-}
-
 export default async function HomePage() {
   const session = await requireSession();
-  const contis = await listContis();
   const today = new Date().toISOString().slice(0, 10);
+  const [folders, contis] = await Promise.all([listFolders(), listContis(null)]);
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-8">
@@ -48,32 +40,7 @@ export default async function HomePage() {
         </button>
       </form>
 
-      {contis.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-ink-700 p-10 text-center text-sm text-ink-600">
-          아직 콘티가 없습니다. 위에서 첫 콘티를 만들어 보세요.
-        </p>
-      ) : (
-        <ul className="space-y-2">
-          {contis.map((c) => (
-            <li
-              key={c.id}
-              className="flex items-center gap-2 rounded-xl border border-ink-700 bg-ink-900 pr-3 transition hover:border-ink-600 hover:bg-ink-800"
-            >
-              <Link href={`/conti/${c.id}`} className="flex min-w-0 flex-1 items-center gap-4 p-4">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-white">{c.title}</p>
-                  <p className="mt-0.5 text-sm text-ink-400">
-                    {formatDate(c.service_date)} · {c.song_count}곡
-                    {c.created_by && ` · ${c.created_by}`}
-                  </p>
-                </div>
-              </Link>
-              <PdfButton contiId={c.id} title={c.title} />
-              <span className="shrink-0 text-ink-600">›</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ContiBrowser folders={folders} contis={contis} currentFolderId={null} />
     </main>
   );
 }
