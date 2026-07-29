@@ -294,6 +294,16 @@ export async function deleteSheet(sheetId: string, contiId: string) {
   revalidatePath(`/conti/${contiId}`);
 }
 
+/** 곡 안의 악보 순서를 다시 매긴다. (상하·좌우·바둑판 배치 순서에 반영된다) */
+export async function reorderSheets(songId: string, contiId: string, orderedIds: string[]) {
+  await requireSession();
+  await Promise.all(
+    orderedIds.map((id, i) => db.from("sheet").update({ order_index: i }).eq("id", id))
+  );
+  revalidatePath(`/conti/${contiId}/edit`);
+  revalidatePath(`/conti/${contiId}`);
+}
+
 // ─────────────────────────────────────────────
 // 콘티 PDF 저장용 — 악보 목록(열람 URL 포함) 넘겨주기
 // ─────────────────────────────────────────────
