@@ -39,6 +39,7 @@ import {
 import { readPdfPageCount } from "@/lib/pdf";
 import type { Conti, SheetLayout, Song } from "@/lib/types";
 import DebouncedField from "./DebouncedField";
+import PptxButton from "./PptxButton";
 
 const ACCEPT = ".pdf,image/png,image/jpeg,image/webp";
 
@@ -103,11 +104,15 @@ export default function ContiEditor({ conti }: { conti: Conti }) {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 pb-24">
-      <header className="mb-6 flex items-center gap-2">
+      <header className="mb-6 flex flex-wrap items-center gap-2">
         <Link href={`/conti/${conti.id}`} className="text-lg text-ink-400 hover:text-white">
           ‹
         </Link>
         <h1 className="flex-1 text-lg font-semibold text-white">콘티 편집</h1>
+        <PptxButton
+          title={conti.title}
+          songs={orderedSongs.map((s) => ({ title: s.title, lyrics: s.lyrics }))}
+        />
         <button
           onClick={() => void duplicateConti(conti.id)}
           className="rounded-lg border border-ink-700 px-3 py-1.5 text-sm text-ink-400 hover:text-white"
@@ -342,6 +347,20 @@ function SongCard({
         rows={2}
         className="mb-3 w-full resize-none text-sm"
       />
+
+      <div className="mb-3">
+        <p className="mb-1 text-xs font-medium text-ink-400">
+          가사 <span className="text-ink-600">· PPT용 (한 줄 = 한 슬라이드, 빈 줄 = 절 구분)</span>
+        </p>
+        <DebouncedField
+          value={song.lyrics}
+          onSave={(v) => updateSong(song.id, contiId, { lyrics: v })}
+          placeholder="가사를 붙여넣으세요."
+          multiline
+          rows={4}
+          className="w-full resize-none text-sm"
+        />
+      </div>
 
       {/* 악보 */}
       <div className="mb-3">
