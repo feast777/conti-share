@@ -1,13 +1,13 @@
 import ContiBrowser from "@/components/ContiBrowser";
+import NewContiForm from "@/components/NewContiForm";
 import { requireSession } from "@/lib/auth";
 import { listAllFolders, listContis } from "@/lib/queries";
-import { createConti, logout } from "./actions";
+import { logout } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const session = await requireSession();
-  const today = new Date().toISOString().slice(0, 10);
   const [allFolders, contis] = await Promise.all([listAllFolders(), listContis(null)]);
   const topFolders = allFolders.filter((f) => f.parent_id === null);
 
@@ -25,21 +25,7 @@ export default async function HomePage() {
         </form>
       </header>
 
-      <form
-        action={createConti}
-        className="mb-8 flex flex-col gap-2 rounded-xl border border-ink-700 bg-ink-900 p-4 sm:flex-row"
-      >
-        <input
-          name="title"
-          placeholder="콘티 이름 (예: 주일 1부 예배)"
-          className="flex-1"
-          required
-        />
-        <input name="service_date" type="date" defaultValue={today} className="sm:w-44" />
-        <button className="rounded-lg bg-accent px-4 py-2 font-medium text-ink-950">
-          새 콘티
-        </button>
-      </form>
+      <NewContiForm />
 
       <ContiBrowser currentFolderId={null} path={[]} subfolders={topFolders} contis={contis} />
     </main>
