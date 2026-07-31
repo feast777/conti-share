@@ -11,6 +11,7 @@ const FONT = "맑은 고딕";
 /** 콘티의 곡 가사로 찬양 PPT(.pptx)를 만든다. 한 줄 = 한 슬라이드, 곡마다 제목 슬라이드. */
 export default function PptxButton({ title, songs }: { title: string; songs: SongLyric[] }) {
   const [busy, setBusy] = useState(false);
+  const [perSlide, setPerSlide] = useState(2); // 슬라이드당 줄 수
 
   const make = async () => {
     const withLyrics = songs.filter((s) => s.lyrics.trim());
@@ -45,13 +46,19 @@ export default function PptxButton({ title, songs }: { title: string; songs: Son
         titleSlide.background = { color: BG };
         titleSlide.addText(song.title || "제목 없음", centered(40));
 
-        // 가사 — 한 줄(빈 줄 제외)마다 슬라이드
-        const lines = song.lyrics.split(/\r?\n/).map((l) => l.trim());
-        for (const line of lines) {
-          if (!line) continue;
-          const slide = pptx.addSlide();
-          slide.background = { color: BG };
-          slide.addText(line, centered(44));
+        // 가사 — 빈 줄(절)마다 끊고, 절 안에서 perSlide 줄씩 묶어 한 슬라이드
+        const stanzas = song.lyrics.split(/\r?\n\s*\r?\n/);
+        for (const stanza of stanzas) {
+          const lines = stanza
+            .split(/\r?\n/)
+            .map((l) => l.trim())
+            .filter(Boolean);
+          for (let i = 0; i < lines.length; i += perSlide) {
+            const chunk = lines.slice(i, i + perSlide).join("\n");
+            const slide = pptx.addSlide();
+            slide.background = { color: BG };
+            slide.addText(chunk, centered(40));
+          }
         }
       }
 
@@ -64,13 +71,26 @@ export default function PptxButton({ title, songs }: { title: string; songs: Son
   };
 
   return (
-    <button
-      onClick={make}
-      disabled={busy}
-      className="rounded-lg border border-ink-700 px-3 py-1.5 text-sm text-ink-400 hover:text-white disabled:opacity-50"
-      title="곡 가사로 찬양 PPT(.pptx) 만들기"
-    >
-      {busy ? "PPT 만드는 중…" : "가사 PPT"}
-    </button>
+    <div className="flex items-center gap-1">
+      <select
+        value={perSlide}
+        onChange={(e) => setPerSlide(Number(e.target.value))}
+        className="rounded-md border border-ink-700 bg-ink-800 px-1.5 py-1 text-xs text-ink-200"
+        title="슬라이드당 가사 줄 수"
+        aria-label="슬라이드당 줄 수"
+      >
+        <option value={1}>1줄</option>
+        <option value={2}>2줄</option>
+        <option value={3}>3줄</option>
+      </select>
+      <button
+        onClick={make}
+        disabled={busy}
+        className="rounded-lg border border-ink-700 px-3 py-1.5 text-sm text-ink-400 hover:text-white disabled:opacity-50"
+        title="곡 가사로 찬양 PPT(.pptx) 만들기"
+      >
+        {busy ? "PPT 만드는 중…" : "가사 PPT"}
+      </button>
+    </div>
   );
 }
