@@ -57,10 +57,13 @@ export async function listContis(
 /** 모든 폴더 (각 폴더의 콘티 개수 · 하위 폴더 개수 · 상위 폴더 포함).
  *  화면에서는 이 목록을 부모별로 걸러서 쓴다. */
 export async function listAllFolders(): Promise<FolderSummary[]> {
-  const [{ data: folders }, { data: contis }] = await Promise.all([
+  const [{ data: folders, error: fErr }, { data: contis, error: cErr }] = await Promise.all([
     db.from("folder").select("id, name, parent_id, order_index, created_at").order("name"),
     db.from("conti").select("folder_id"),
   ]);
+  // 에러를 삼키면 폴더가 '사라진 것처럼' 빈 목록이 되므로, 오류는 그대로 던진다
+  if (fErr) throw fErr;
+  if (cErr) throw cErr;
 
   const contiCount = new Map<string, number>();
   for (const c of contis ?? []) {
@@ -88,7 +91,12 @@ export async function listAllFolders(): Promise<FolderSummary[]> {
 export async function getFolder(
   id: string
 ): Promise<{ id: string; name: string; parent_id: string | null } | null> {
-  const { data } = await db.from("folder").select("id, name, parent_id").eq("id", id).maybeSingle();
+  const { data, error } = await db
+    .from("folder")
+    .select("id, name, parent_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error; // 장애 때 '없는 폴더'로 오인하지 않도록
   return data
     ? { id: data.id as string, name: data.name as string, parent_id: (data.parent_id as string | null) ?? null }
     : null;
@@ -96,7 +104,8 @@ export async function getFolder(
 
 /** 콘티 하나를 곡 · 악보 · 레퍼런스까지 통째로 읽어온다. */
 export async function getConti(id: string): Promise<Conti | null> {
-  const { data: conti } = await db.from("conti").select("*").eq("id", id).maybeSingle();
+  const { data: conti, error } = await db.from("conti").select("*").eq("id", id).maybeSingle();
+  if (error) throw error; // 장애 때 '없는 콘티(404)'로 오인하지 않도록
   if (!conti) return null;
 
   const { data: songRows } = await db
