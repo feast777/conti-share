@@ -113,6 +113,7 @@ export async function duplicateConti(id: string) {
         song_key: song.song_key,
         bpm: song.bpm,
         memo: song.memo,
+        lyrics: song.lyrics,
         sheet_layout: song.sheet_layout,
       })
       .select("id")
@@ -263,7 +264,14 @@ export async function addSong(contiId: string, title: string) {
 export async function updateSong(
   songId: string,
   contiId: string,
-  patch: { title?: string; song_key?: string; bpm?: string; memo?: string; sheet_layout?: SheetLayout }
+  patch: {
+    title?: string;
+    song_key?: string;
+    bpm?: string;
+    memo?: string;
+    lyrics?: string;
+    sheet_layout?: SheetLayout;
+  }
 ) {
   await requireSession();
   const { error } = await db.from("song").update(patch).eq("id", songId);

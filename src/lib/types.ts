@@ -49,6 +49,7 @@ export type Song = {
   song_key: string;
   bpm: string;
   memo: string;
+  lyrics: string;
   sheet_layout: SheetLayout;
   sheets: Sheet[];
   references: Reference[];
