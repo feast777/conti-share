@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import ContiBrowser from "@/components/ContiBrowser";
 import FolderHeader from "@/components/FolderHeader";
+import NewContiForm from "@/components/NewContiForm";
 import { requireSession } from "@/lib/auth";
 import { getFolder, listAllFolders, listContis } from "@/lib/queries";
 
@@ -31,6 +32,7 @@ export default async function FolderPage({ params }: { params: Promise<{ id: str
   return (
     <main className="mx-auto max-w-3xl px-5 py-8">
       <FolderHeader id={folder.id} name={folder.name} parentId={folder.parent_id} />
+      <NewContiForm folderId={folder.id} />
       <ContiBrowser
         currentFolderId={folder.id}
         path={path}

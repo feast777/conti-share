@@ -33,6 +33,7 @@ export async function createConti(formData: FormData) {
   const session = await requireSession();
   const title = String(formData.get("title") ?? "").trim();
   const serviceDate = String(formData.get("service_date") ?? "");
+  const folderId = (String(formData.get("folder_id") ?? "") || null) as string | null;
 
   const { data, error } = await db
     .from("conti")
@@ -40,12 +41,14 @@ export async function createConti(formData: FormData) {
       title: title || "새 콘티",
       service_date: serviceDate || new Date().toISOString().slice(0, 10),
       created_by: session.name,
+      folder_id: folderId,
     })
     .select("id")
     .single();
 
   if (error) throw error;
   revalidatePath("/");
+  if (folderId) revalidatePath(`/folder/${folderId}`);
   redirect(`/conti/${data.id}/edit`);
 }
 
@@ -92,6 +95,7 @@ export async function duplicateConti(id: string) {
       service_date: new Date().toISOString().slice(0, 10),
       note: src.note,
       created_by: session.name,
+      folder_id: src.folder_id, // 같은 폴더 안에 복사본을 둔다
     })
     .select("id")
     .single();

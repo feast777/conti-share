@@ -16,7 +16,13 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useState, useTransition } from "react";
-import { createFolder, moveConti, moveFolder, reorderFolders } from "@/app/actions";
+import {
+  createFolder,
+  duplicateConti,
+  moveConti,
+  moveFolder,
+  reorderFolders,
+} from "@/app/actions";
 import PdfButton from "@/components/PdfButton";
 import type { ContiSummary, FolderSummary } from "@/lib/types";
 
@@ -386,6 +392,16 @@ function ContiCard({ conti, dimmed }: { conti: ContiSummary; dimmed: boolean }) 
           </p>
         </div>
       </Link>
+      <button
+        onClick={() => {
+          if (confirm(`"${conti.title}" 콘티를 복사할까요?`)) void duplicateConti(conti.id);
+        }}
+        className="shrink-0 px-1.5 text-ink-500 hover:text-white"
+        title="이 콘티 복사"
+        aria-label={`${conti.title} 복사`}
+      >
+        ⧉
+      </button>
       <PdfButton contiId={conti.id} title={conti.title} />
       <span className="shrink-0 pr-3 text-ink-600">›</span>
     </li>
