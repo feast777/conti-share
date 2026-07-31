@@ -110,8 +110,18 @@ export default function ContiEditor({ conti }: { conti: Conti }) {
         </Link>
         <h1 className="flex-1 text-lg font-semibold text-white">콘티 편집</h1>
         <PptxButton
+          contiId={conti.id}
           title={conti.title}
-          songs={orderedSongs.map((s) => ({ title: s.title, lyrics: s.lyrics }))}
+          songs={orderedSongs.map((s) => ({
+            id: s.id,
+            title: s.title,
+            lyrics: s.lyrics,
+            sheets: s.sheets.map((sh) => ({
+              kind: sh.kind,
+              url: sh.url,
+              page_count: sh.page_count,
+            })),
+          }))}
         />
         <button
           onClick={() => void duplicateConti(conti.id)}
