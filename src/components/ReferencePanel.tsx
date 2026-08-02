@@ -8,7 +8,9 @@ import { embedUrl, parseYoutube, thumbnailUrl } from "@/lib/youtube";
 /** 곡 제목 + 악기 로 유튜브를 찾는 버튼 목록 (필요하면 여기서 추가/변경) */
 const INSTRUMENTS = [
   { label: "피아노", icon: "🎹" },
+  { label: "세컨건반", icon: "🎹" },
   { label: "일렉기타", icon: "🎸" },
+  { label: "어쿠스틱기타", icon: "🎸" },
   { label: "베이스", icon: "🎸" },
   { label: "드럼", icon: "🥁" },
 ];
