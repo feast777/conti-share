@@ -4,7 +4,7 @@ import { revalidatePath, unstable_cache } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkTeamPassword, createSession, destroySession, requireSession } from "@/lib/auth";
 import { SHEET_BUCKET, db } from "@/lib/db";
-import { getConti } from "@/lib/queries";
+import { getAnnotations, getConti } from "@/lib/queries";
 import type { SheetKind, SheetLayout, Stroke, YoutubeHit } from "@/lib/types";
 
 // ─────────────────────────────────────────────
@@ -424,6 +424,38 @@ export async function listContiSheets(contiId: string): Promise<{
     .map((s) => ({ url: s.url as string, kind: s.kind, fileName: s.file_name }));
 
   return { title: conti.title, sheets };
+}
+
+/** PDF 저장용 — 악보(장·페이지 정보 포함) + 손글씨 메모(모든 사람 필기)를 함께 준다. */
+export async function listContiExport(contiId: string): Promise<{
+  title: string;
+  sheets: { url: string; kind: SheetKind; fileName: string; sheetId: string; pageCount: number }[];
+  annotations: Record<string, Stroke[]>; // "sheetId:page" → 필기들
+}> {
+  await requireSession();
+  const conti = await getConti(contiId);
+  if (!conti) return { title: "콘티", sheets: [], annotations: {} };
+
+  const sheets = conti.songs
+    .flatMap((song) => song.sheets)
+    .filter((s) => s.url)
+    .map((s) => ({
+      url: s.url as string,
+      kind: s.kind,
+      fileName: s.file_name,
+      sheetId: s.id,
+      pageCount: Math.max(1, s.page_count),
+    }));
+
+  const anns = await getAnnotations(contiId);
+  const annotations: Record<string, Stroke[]> = {};
+  for (const a of anns) {
+    if (!a.strokes?.length) continue;
+    const k = `${a.sheet_id}:${a.page}`;
+    (annotations[k] ??= []).push(...a.strokes);
+  }
+
+  return { title: conti.title, sheets, annotations };
 }
 
 // ─────────────────────────────────────────────

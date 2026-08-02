@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { listContiSheets } from "@/app/actions";
+import { listContiExport } from "@/app/actions";
+import type { Stroke } from "@/lib/types";
+
+function hexRgb(hex: string) {
+  const h = hex.replace("#", "");
+  const n = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const v = parseInt(n || "111827", 16);
+  return { r: ((v >> 16) & 255) / 255, g: ((v >> 8) & 255) / 255, b: (v & 255) / 255 };
+}
 
 type State =
   | { phase: "idle" }
@@ -20,13 +28,38 @@ export default function PdfButton({ contiId, title }: { contiId: string; title: 
   const build = async () => {
     setState({ phase: "working", pct: 0 });
     try {
-      const { title: contiTitle, sheets } = await listContiSheets(contiId);
+      const { title: contiTitle, sheets, annotations } = await listContiExport(contiId);
       if (!sheets.length) {
         setState({ phase: "error", msg: "악보 없음" });
         return;
       }
 
-      const { PDFDocument } = await import("pdf-lib");
+      const { PDFDocument, rgb, LineCapStyle } = await import("pdf-lib");
+
+      // 손글씨 메모(정규화 0~1 좌표)를 페이지에 그린다. 화면 좌표는 위가 0,
+      // PDF 는 아래가 0 이라 y 를 뒤집는다.
+      const drawStrokes = (
+        page: import("pdf-lib").PDFPage,
+        strokes: Stroke[] | undefined,
+        W: number,
+        H: number
+      ) => {
+        for (const s of strokes ?? []) {
+          if (!s.points?.length) continue;
+          const c = hexRgb(s.color);
+          const color = rgb(c.r, c.g, c.b);
+          const thickness = Math.max(0.5, s.width * W);
+          const opacity = s.tool === "highlighter" ? 0.32 : 1;
+          const pts = s.points.map(([x, y]) => ({ x: x * W, y: (1 - y) * H }));
+          const line = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+            page.drawLine({ start: a, end: b, thickness, color, opacity, lineCap: LineCapStyle.Round });
+          if (pts.length === 1) {
+            line(pts[0], { x: pts[0].x + 0.5, y: pts[0].y });
+            continue;
+          }
+          for (let i = 1; i < pts.length; i++) line(pts[i - 1], pts[i]);
+        }
+      };
 
       // 1) 악보 파일을 한꺼번에 내려받는다 (하나 끝날 때마다 진행률 ~70% 까지)
       let done = 0;
@@ -54,13 +87,17 @@ export default function PdfButton({ contiId, title }: { contiId: string; title: 
             if (item.sheet.kind === "pdf") {
               const src = await PDFDocument.load(item.buf, { ignoreEncryption: true });
               const pages = await out.copyPages(src, src.getPageIndices());
-              for (const p of pages) out.addPage(p);
+              pages.forEach((p, idx) => {
+                out.addPage(p);
+                drawStrokes(p, annotations[`${item.sheet.sheetId}:${idx + 1}`], p.getWidth(), p.getHeight());
+              });
             } else {
               const data = new Uint8Array(item.buf);
               const isPng = item.sheet.fileName.toLowerCase().endsWith(".png");
               const img = isPng ? await out.embedPng(data) : await out.embedJpg(data);
               const page = out.addPage([img.width, img.height]);
               page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+              drawStrokes(page, annotations[`${item.sheet.sheetId}:1`], img.width, img.height);
             }
           } catch {
             // 형식이 안 맞는 파일은 건너뛴다
