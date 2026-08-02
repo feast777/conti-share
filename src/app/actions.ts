@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { checkTeamPassword, createSession, destroySession, requireSession } from "@/lib/auth";
 import { SHEET_BUCKET, db } from "@/lib/db";
 import { getConti } from "@/lib/queries";
-import type { SheetKind, SheetLayout, Stroke } from "@/lib/types";
+import type { SheetKind, SheetLayout, Stroke, YoutubeHit } from "@/lib/types";
 
 // ─────────────────────────────────────────────
 // 로그인
@@ -465,6 +465,57 @@ export async function searchYoutube(query: string): Promise<string | null> {
   const q = query.trim();
   if (!q) return null;
   return searchYoutubeCached(q);
+}
+
+/** 검색 결과 상위 5개(영상 ID + 제목)를 뽑는다 — 사용자가 골라서 재생할 수 있게. */
+const searchYoutubeManyCached = unstable_cache(
+  async (query: string): Promise<YoutubeHit[]> => {
+    const url =
+      "https://www.youtube.com/results?search_query=" +
+      encodeURIComponent(query) +
+      "&sp=EgIQAQ%253D%253D"; // 동영상만
+    try {
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+          "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+          Cookie: "SOCS=CAI; CONSENT=YES+1",
+        },
+      });
+      if (!res.ok) return [];
+      const html = await res.text();
+      const hits: YoutubeHit[] = [];
+      const seen = new Set<string>();
+      // videoId 뒤에 나오는 첫 제목 텍스트를 함께 잡는다 (다음 videoId 전까지만)
+      const re = /"videoId":"([\w-]{11})"(?:(?!"videoId")[\s\S]){0,600}?"text":"((?:\\.|[^"\\])*)"/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(html)) && hits.length < 5) {
+        const id = m[1];
+        if (seen.has(id)) continue;
+        seen.add(id);
+        let title = m[2];
+        try {
+          title = JSON.parse('"' + m[2] + '"');
+        } catch {
+          /* 디코드 실패하면 원문 유지 */
+        }
+        hits.push({ id, title });
+      }
+      return hits;
+    } catch {
+      return [];
+    }
+  },
+  ["yt-search-many"],
+  { revalidate: 60 * 60 * 24 }
+);
+
+export async function searchYoutubeMany(query: string): Promise<YoutubeHit[]> {
+  await requireSession();
+  const q = query.trim();
+  if (!q) return [];
+  return searchYoutubeManyCached(q);
 }
 
 // ─────────────────────────────────────────────

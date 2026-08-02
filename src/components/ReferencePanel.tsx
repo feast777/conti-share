@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { searchYoutube } from "@/app/actions";
-import type { Reference } from "@/lib/types";
+import { searchYoutubeMany } from "@/app/actions";
+import type { Reference, YoutubeHit } from "@/lib/types";
 import { embedUrl, parseYoutube, thumbnailUrl } from "@/lib/youtube";
 
 /** 곡 제목 + 악기 로 유튜브를 찾는 버튼 목록 (필요하면 여기서 추가/변경) */
@@ -16,8 +16,8 @@ const INSTRUMENTS = [
 const searchUrl = (songTitle: string, instrument: string) =>
   `https://www.youtube.com/results?search_query=${encodeURIComponent(`${songTitle} ${instrument}`)}`;
 
-/** "loading" = 검색 중, string = 찾은 영상 ID, null = 결과 없음 */
-type Found = "loading" | string | null;
+/** "loading" = 검색 중, 배열 = 찾은 영상들(최대 5개), null = 아직 안 찾음 */
+type Found = "loading" | YoutubeHit[] | null;
 
 export default function ReferencePanel({
   references,
@@ -42,8 +42,8 @@ export default function ReferencePanel({
     setPlaying(null);
     if (found[instrument] === undefined) {
       setFound((f) => ({ ...f, [instrument]: "loading" }));
-      const id = await searchYoutube(`${songTitle} ${instrument}`);
-      setFound((f) => ({ ...f, [instrument]: id }));
+      const hits = await searchYoutubeMany(`${songTitle} ${instrument}`);
+      setFound((f) => ({ ...f, [instrument]: hits }));
     }
   };
 
@@ -129,32 +129,49 @@ export default function ReferencePanel({
         </div>
       </div>
 
-      {/* 선택한 악기의 검색 결과 영상 */}
-      {openInst && (
-        <div className="flex h-full shrink-0 flex-col">
-          <div className="relative h-full aspect-video overflow-hidden rounded-lg bg-black">
-            {result === "loading" ? (
-              <div className="grid h-full w-full place-items-center text-xs text-ink-500">
-                검색 중…
-              </div>
-            ) : typeof result === "string" ? (
-              playing === `inst:${openInst}` ? (
+      {/* 선택한 악기의 검색 결과 — 최대 5개 중 골라 재생 */}
+      {openInst && result === "loading" && (
+        <div className="grid h-full aspect-video shrink-0 place-items-center rounded-lg border border-ink-700 text-xs text-ink-500">
+          검색 중…
+        </div>
+      )}
+
+      {openInst && Array.isArray(result) && result.length === 0 && (
+        <div className="grid h-full aspect-video shrink-0 place-content-center gap-1 rounded-lg border border-ink-700 p-3 text-center">
+          <p className="text-xs text-ink-500">결과를 못 찾았어요</p>
+          <a
+            href={searchUrl(songTitle, openInst)}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs text-accent underline"
+          >
+            유튜브에서 보기
+          </a>
+        </div>
+      )}
+
+      {openInst &&
+        Array.isArray(result) &&
+        result.map((hit) => (
+          <div key={hit.id} className="flex h-full shrink-0 flex-col">
+            <div className="relative h-full aspect-video overflow-hidden rounded-lg bg-black">
+              {playing === hit.id ? (
                 <iframe
-                  src={embedUrl({ id: result, start: 0 })}
-                  title={openInst}
+                  src={embedUrl({ id: hit.id, start: 0 })}
+                  title={hit.title || openInst}
                   allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
                   allowFullScreen
                   className="h-full w-full"
                 />
               ) : (
                 <button
-                  onClick={() => setPlaying(`inst:${openInst}`)}
+                  onClick={() => setPlaying(hit.id)}
                   className="group relative h-full w-full"
-                  aria-label={`${openInst} 영상 재생`}
+                  aria-label={`${hit.title || openInst} 재생`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={thumbnailUrl(result)}
+                    src={thumbnailUrl(hit.id)}
                     alt=""
                     className="h-full w-full object-cover opacity-80 transition group-hover:opacity-100"
                   />
@@ -164,24 +181,13 @@ export default function ReferencePanel({
                     </span>
                   </span>
                 </button>
-              )
-            ) : (
-              <div className="grid h-full w-full place-content-center gap-1 p-3 text-center">
-                <p className="text-xs text-ink-500">결과를 못 찾았어요</p>
-                <a
-                  href={searchUrl(songTitle, openInst)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs text-accent underline"
-                >
-                  유튜브에서 보기
-                </a>
-              </div>
-            )}
+              )}
+            </div>
+            <p className="mt-1 max-w-40 truncate text-center text-xs text-ink-400">
+              {hit.title || openInst}
+            </p>
           </div>
-          <p className="mt-1 truncate text-center text-xs text-ink-400">{openInst}</p>
-        </div>
-      )}
+        ))}
     </div>
   );
 }

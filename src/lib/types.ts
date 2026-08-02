@@ -1,5 +1,8 @@
 export type SheetKind = "pdf" | "image";
 
+/** 유튜브 검색 결과 한 건 (앱 안에서 악기 영상 여러 개 보여줄 때) */
+export type YoutubeHit = { id: string; title: string };
+
 export type Point = [number, number]; // 0~1 로 정규화된 좌표
 
 export type Stroke = {
