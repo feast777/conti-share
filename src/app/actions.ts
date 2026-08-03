@@ -66,6 +66,10 @@ export async function updateConti(id: string, patch: { title?: string; service_d
 export async function deleteConti(id: string) {
   await requireSession();
 
+  // 지운 뒤 원래 있던 폴더로 돌아가기 위해 미리 확인
+  const { data: row } = await db.from("conti").select("folder_id").eq("id", id).maybeSingle();
+  const folderId = (row?.folder_id as string | null) ?? null;
+
   // 스토리지에 올라간 악보 파일까지 같이 지운다 (DB 는 cascade)
   const { data: songs } = await db.from("song").select("id").eq("conti_id", id);
   const songIds = (songs ?? []).map((s) => s.id as string);
@@ -78,6 +82,10 @@ export async function deleteConti(id: string) {
   const { error } = await db.from("conti").delete().eq("id", id);
   if (error) throw error;
   revalidatePath("/");
+  if (folderId) {
+    revalidatePath(`/folder/${folderId}`);
+    redirect(`/folder/${folderId}`);
+  }
   redirect("/");
 }
 

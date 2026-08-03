@@ -368,9 +368,9 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
       {/* 상단 바 */}
       <header className="flex shrink-0 items-center gap-2 border-b border-ink-800 px-2 py-1.5">
         <Link
-          href="/"
+          href={conti.folder_id ? `/folder/${conti.folder_id}` : "/"}
           className="rounded-md px-2 py-1 text-lg text-ink-400 hover:bg-ink-800 hover:text-ink-200"
-          aria-label="콘티 목록"
+          aria-label={conti.folder_id ? "이 콘티가 있는 폴더" : "콘티 목록"}
         >
           ‹
         </Link>

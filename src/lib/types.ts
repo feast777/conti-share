@@ -65,6 +65,8 @@ export type Conti = {
   note: string;
   created_by: string;
   created_at: string;
+  /** 속한 폴더 (없으면 홈). 보기·편집에서 '뒤로'가 이 폴더로 돌아간다. */
+  folder_id: string | null;
   songs: Song[];
 };
 
