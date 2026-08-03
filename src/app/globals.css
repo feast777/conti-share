@@ -5,32 +5,39 @@
     "Malgun Gothic", "Noto Sans KR", sans-serif;
 
   /* 기본(라이트) 팔레트 — ink 스케일은 의미 기준: 950=페이지, 900=카드, 200=본문 글자 */
-  --color-ink-950: #f4f6f9; /* 페이지 배경 */
+  --color-ink-950: #fbfbfa; /* 페이지 배경 — 살짝 따뜻한 오프화이트 */
   --color-ink-900: #ffffff; /* 카드 배경 */
-  --color-ink-800: #e9edf2; /* 뷰어 배경 · hover */
-  --color-ink-700: #dbe0e7; /* 보더 */
-  --color-ink-600: #8b94a1; /* 옅은 글자 */
-  --color-ink-400: #5a6473; /* 보조 글자 */
-  --color-ink-200: #1b2430; /* 본문 글자 */
+  --color-ink-800: #f1f1ef; /* 뷰어 배경 · hover */
+  --color-ink-700: #e6e6e3; /* 보더 — 아주 옅게 */
+  --color-ink-600: #9b9a97; /* 옅은 글자 */
+  --color-ink-400: #6b6a67; /* 보조 글자 */
+  --color-ink-200: #1a1a19; /* 본문 글자 */
 
-  --color-accent: #2f6fed;
-  --color-accent-soft: #dce8ff;
+  --color-accent: #2b6cb0;
+  --color-accent-soft: #eaf1fa;
   --color-on-accent: #ffffff; /* accent 위 글자 */
+
+  /* 부드러운 그림자 — 미니멀하게 은은히 */
+  --shadow-card: 0 1px 2px rgb(15 15 15 / 0.04), 0 1px 3px rgb(15 15 15 / 0.03);
+  --shadow-card-hover: 0 2px 4px rgb(15 15 15 / 0.05), 0 4px 12px rgb(15 15 15 / 0.06);
 }
 
 /* 다크 테마 — 같은 토큰을 값만 갈아끼운다 */
 :root[data-theme="dark"] {
-  --color-ink-950: #0b0d10;
-  --color-ink-900: #12151a;
-  --color-ink-800: #1a1f26;
-  --color-ink-700: #262d37;
-  --color-ink-600: #3a4450;
-  --color-ink-400: #8b96a5;
-  --color-ink-200: #cdd5df;
+  --color-ink-950: #191919;
+  --color-ink-900: #202020;
+  --color-ink-800: #2a2a2a;
+  --color-ink-700: #333332;
+  --color-ink-600: #757471;
+  --color-ink-400: #9b9a97;
+  --color-ink-200: #ededec;
 
-  --color-accent: #6ea8ff;
-  --color-accent-soft: #1e3358;
-  --color-on-accent: #0a1220;
+  --color-accent: #5b9dd9;
+  --color-accent-soft: #263749;
+  --color-on-accent: #0d1116;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-card-hover: 0 2px 6px rgb(0 0 0 / 0.4);
 }
 
 html,
@@ -64,9 +71,10 @@ textarea,
 select {
   background: var(--color-ink-900);
   border: 1px solid var(--color-ink-700);
-  border-radius: 0.5rem;
+  border-radius: 0.625rem;
   padding: 0.5rem 0.75rem;
   outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 input::placeholder,
@@ -78,6 +86,20 @@ input:focus,
 textarea:focus,
 select:focus {
   border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+
+/* 카드 — 옅은 보더 + 은은한 그림자, hover 에 살짝 떠오르는 느낌 */
+.card {
+  background: var(--color-ink-900);
+  border: 1px solid var(--color-ink-700);
+  border-radius: 0.875rem;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+.card-hover:hover {
+  box-shadow: var(--shadow-card-hover);
+  border-color: color-mix(in srgb, var(--color-ink-600) 35%, var(--color-ink-700));
 }
 
 ::-webkit-scrollbar {

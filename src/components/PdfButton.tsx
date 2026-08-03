@@ -183,7 +183,7 @@ export default function PdfButton({ contiId, title }: { contiId: string; title: 
         stop(e);
         void build();
       }}
-      className="shrink-0 rounded-lg border border-ink-700 px-3 py-1.5 text-xs text-ink-400 transition hover:border-ink-500 hover:text-ink-200"
+      className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-600 transition hover:bg-ink-800 hover:text-ink-200"
       title="이 콘티의 악보 전체를 PDF 로 저장"
     >
       {state.phase === "error" ? "다시" : "PDF"}

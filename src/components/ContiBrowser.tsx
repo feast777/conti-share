@@ -24,6 +24,7 @@ import {
   reorderFolders,
 } from "@/app/actions";
 import PdfButton from "@/components/PdfButton";
+import { ChevronRight, CopyIcon, FolderIcon, GripIcon, HomeIcon, PlusIcon } from "@/components/icons";
 import type { ContiSummary, FolderSummary } from "@/lib/types";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -153,14 +154,16 @@ export default function ContiBrowser({ currentFolderId, path, subfolders, contis
       {!isHome && <Breadcrumb path={path} />}
 
       {/* 폴더 */}
-      <section className="mb-6 mt-3">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <p className="text-sm font-medium text-ink-400">{isHome ? "폴더" : "하위 폴더"}</p>
+      <section className="mb-10">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-xs font-medium uppercase tracking-wider text-ink-600">
+            {isHome ? "폴더" : "하위 폴더"}
+          </h2>
           {subfolders.length > 1 && (
             <select
               value={sort}
               onChange={(e) => changeSort(e.target.value as SortKey)}
-              className="rounded-md border border-ink-700 bg-ink-800 px-2 py-1 text-xs text-ink-200"
+              className="border-transparent bg-transparent py-1 pl-1 pr-0 text-xs text-ink-400 shadow-none focus:border-transparent focus:shadow-none"
               aria-label="폴더 정렬"
             >
               {SORT_OPTIONS.map((o) => (
@@ -171,7 +174,7 @@ export default function ContiBrowser({ currentFolderId, path, subfolders, contis
             </select>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {sortedFolders.map((f, i) => (
             <FolderCard
               key={f.id}
@@ -191,18 +194,15 @@ export default function ContiBrowser({ currentFolderId, path, subfolders, contis
           ))}
           <NewFolder value={newFolder} onChange={setNewFolder} onAdd={handleAddFolder} />
         </div>
-        {manual && subfolders.length > 1 && (
-          <p className="mt-1 text-xs text-ink-600">◀ ▶ 로 순서를 바꿀 수 있어요.</p>
-        )}
       </section>
 
       {/* 콘티 */}
       <section>
-        <p className="mb-2 text-sm font-medium text-ink-400">
-          {isHome ? "폴더에 없는 콘티" : "이 폴더의 콘티"}
-        </p>
+        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-ink-600">
+          {isHome ? "콘티" : "이 폴더의 콘티"}
+        </h2>
         {contis.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-ink-700 p-8 text-center text-sm text-ink-600">
+          <p className="rounded-xl border border-dashed border-ink-700 p-10 text-center text-sm text-ink-600">
             {isHome
               ? "폴더 밖 콘티가 없습니다."
               : "이 폴더에 콘티가 없습니다. 콘티를 여기로 끌어다 놓으세요."}
@@ -218,15 +218,16 @@ export default function ContiBrowser({ currentFolderId, path, subfolders, contis
 
       <DragOverlay>
         {activeConti ? (
-          <div className="rounded-xl border border-accent bg-ink-800 px-4 py-3 shadow-2xl">
-            <p className="truncate font-medium text-ink-200">{activeConti.title}</p>
-            <p className="mt-0.5 text-xs text-ink-400">
+          <div className="rounded-[0.875rem] border border-accent bg-ink-900 px-4 py-3 shadow-[var(--shadow-card-hover)]">
+            <p className="truncate text-sm font-medium text-ink-200">{activeConti.title}</p>
+            <p className="mt-0.5 text-xs text-ink-600">
               {formatDate(activeConti.service_date)} · {activeConti.song_count}곡
             </p>
           </div>
         ) : activeFolder ? (
-          <div className="rounded-xl border border-accent bg-ink-800 px-4 py-3 shadow-2xl">
-            <span className="text-sm font-medium text-ink-200">📁 {activeFolder.name}</span>
+          <div className="flex items-center gap-2 rounded-[0.875rem] border border-accent bg-ink-900 px-4 py-3 shadow-[var(--shadow-card-hover)]">
+            <FolderIcon className="h-4 w-4 text-ink-400" />
+            <span className="text-sm font-medium text-ink-200">{activeFolder.name}</span>
           </div>
         ) : null}
       </DragOverlay>
@@ -238,29 +239,41 @@ export default function ContiBrowser({ currentFolderId, path, subfolders, contis
 
 function Breadcrumb({ path }: { path: { id: string; name: string }[] }) {
   return (
-    <nav className="flex flex-wrap items-center gap-1 text-sm text-ink-400">
-      <Crumb dropId={ROOT} href="/" label="🏠 홈" />
+    <nav className="mb-6 flex flex-wrap items-center gap-0.5 text-sm text-ink-400">
+      <Crumb dropId={ROOT} href="/">
+        <HomeIcon className="h-3.5 w-3.5" />홈
+      </Crumb>
       {path.map((a) => (
         <Fragment key={a.id}>
-          <span className="text-ink-600">›</span>
-          <Crumb dropId={`f:${a.id}`} href={`/folder/${a.id}`} label={a.name} />
+          <ChevronRight className="h-3.5 w-3.5 text-ink-600" />
+          <Crumb dropId={`f:${a.id}`} href={`/folder/${a.id}`}>
+            {a.name}
+          </Crumb>
         </Fragment>
       ))}
     </nav>
   );
 }
 
-function Crumb({ dropId, href, label }: { dropId: string; href: string; label: string }) {
+function Crumb({
+  dropId,
+  href,
+  children,
+}: {
+  dropId: string;
+  href: string;
+  children: React.ReactNode;
+}) {
   const { setNodeRef, isOver } = useDroppable({ id: dropId });
   return (
     <Link
       ref={setNodeRef}
       href={href}
-      className={`rounded px-1.5 py-0.5 transition ${
-        isOver ? "bg-accent-soft text-accent" : "hover:text-ink-200"
+      className={`flex items-center gap-1 rounded-md px-1.5 py-1 transition ${
+        isOver ? "bg-accent-soft text-accent" : "hover:bg-ink-800 hover:text-ink-200"
       }`}
     >
-      {label}
+      {children}
     </Link>
   );
 }
@@ -288,14 +301,12 @@ function FolderCard({
       ref={setRef}
       {...drag.listeners}
       {...drag.attributes}
-      className={`relative flex flex-col rounded-xl border p-3 transition ${
-        drop.isOver && !dimmed
-          ? "border-accent bg-accent-soft"
-          : "border-ink-700 bg-ink-900 hover:border-ink-600"
+      className={`card card-hover group relative flex flex-col p-3.5 ${
+        drop.isOver && !dimmed ? "border-accent bg-accent-soft" : ""
       } ${dimmed ? "opacity-40" : ""}`}
     >
       {reorder && (
-        <div className="absolute right-1 top-1 flex gap-0.5">
+        <div className="absolute right-1.5 top-1.5 flex gap-0.5 opacity-0 transition group-hover:opacity-100 has-[:focus]:opacity-100 sm:opacity-0">
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
@@ -303,10 +314,10 @@ function FolderCard({
               reorder.onLeft();
             }}
             disabled={!reorder.canLeft}
-            className="rounded px-1 text-base text-ink-500 hover:text-ink-200 disabled:opacity-30"
+            className="grid h-6 w-6 place-items-center rounded-md text-xs text-ink-600 transition hover:bg-ink-800 hover:text-ink-200 disabled:opacity-25"
             aria-label="앞으로"
           >
-            ◀
+            ‹
           </button>
           <button
             onPointerDown={(e) => e.stopPropagation()}
@@ -315,18 +326,19 @@ function FolderCard({
               reorder.onRight();
             }}
             disabled={!reorder.canRight}
-            className="rounded px-1 text-base text-ink-500 hover:text-ink-200 disabled:opacity-30"
+            className="grid h-6 w-6 place-items-center rounded-md text-xs text-ink-600 transition hover:bg-ink-800 hover:text-ink-200 disabled:opacity-25"
             aria-label="뒤로"
           >
-            ▶
+            ›
           </button>
         </div>
       )}
       <Link href={`/folder/${folder.id}`} draggable={false} className="flex flex-col">
-        <span className="text-lg">📁</span>
-        <span className="mt-1 truncate pr-10 text-sm font-medium text-ink-200">{folder.name}</span>
-        <span className="text-xs text-ink-600">
-          {folder.conti_count}개{folder.subfolder_count > 0 && ` · 폴더 ${folder.subfolder_count}`}
+        <FolderIcon className="h-[1.15rem] w-[1.15rem] text-ink-400" />
+        <span className="mt-2.5 truncate pr-8 text-sm font-medium text-ink-200">{folder.name}</span>
+        <span className="mt-0.5 text-xs text-ink-600">
+          콘티 {folder.conti_count}
+          {folder.subfolder_count > 0 && ` · 폴더 ${folder.subfolder_count}`}
         </span>
       </Link>
     </div>
@@ -343,19 +355,20 @@ function NewFolder({
   onAdd: () => void;
 }) {
   return (
-    <div className="flex flex-col justify-center gap-1.5 rounded-xl border border-dashed border-ink-700 p-3">
+    <div className="flex flex-col justify-center gap-2 rounded-[0.875rem] border border-dashed border-ink-700 p-3.5">
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && onAdd()}
         placeholder="새 폴더 이름"
-        className="w-full text-sm"
+        className="w-full bg-transparent text-sm"
       />
       <button
         onClick={onAdd}
-        className="rounded-md bg-accent px-2 py-1 text-xs font-medium text-on-accent"
+        className="flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-ink-400 transition hover:bg-ink-800 hover:text-ink-200"
       >
-        ＋ 폴더 만들기
+        <PlusIcon className="h-3.5 w-3.5" />
+        폴더 만들기
       </button>
     </div>
   );
@@ -368,42 +381,44 @@ function ContiCard({ conti, dimmed }: { conti: ContiSummary; dimmed: boolean }) 
   return (
     <li
       ref={setNodeRef}
-      className={`flex items-center gap-1 rounded-xl border border-ink-700 bg-ink-900 transition ${
-        dimmed ? "opacity-40" : "hover:border-ink-600 hover:bg-ink-800"
-      }`}
+      className={`card card-hover group flex items-center ${dimmed ? "opacity-40" : ""}`}
     >
       <button
         type="button"
         ref={setActivatorNodeRef}
         {...listeners}
         {...attributes}
-        className="shrink-0 cursor-grab touch-none px-2 py-5 text-ink-500 hover:text-ink-200 active:cursor-grabbing"
+        className="shrink-0 cursor-grab touch-none py-5 pl-2.5 pr-1 text-ink-600 opacity-0 transition hover:text-ink-400 active:cursor-grabbing group-hover:opacity-100 sm:opacity-0"
         title="끌어서 폴더로 이동"
         aria-label={`${conti.title} 폴더로 이동`}
       >
-        ⠿
+        <GripIcon />
       </button>
-      <Link href={`/conti/${conti.id}`} className="flex min-w-0 flex-1 items-center py-4">
+      <Link href={`/conti/${conti.id}`} className="flex min-w-0 flex-1 items-center py-4 pl-1">
         <div className="min-w-0 flex-1">
-          <p className="truncate font-medium text-ink-200">{conti.title}</p>
-          <p className="mt-0.5 text-sm text-ink-400">
+          <p className="truncate text-[0.95rem] font-medium leading-snug text-ink-200">
+            {conti.title}
+          </p>
+          <p className="mt-1 truncate text-[0.8rem] text-ink-600">
             {formatDate(conti.service_date)} · {conti.song_count}곡
             {conti.created_by && ` · ${conti.created_by}`}
           </p>
         </div>
       </Link>
-      <button
-        onClick={() => {
-          if (confirm(`"${conti.title}" 콘티를 복사할까요?`)) void duplicateConti(conti.id);
-        }}
-        className="shrink-0 px-1.5 text-ink-500 hover:text-ink-200"
-        title="이 콘티 복사"
-        aria-label={`${conti.title} 복사`}
-      >
-        ⧉
-      </button>
-      <PdfButton contiId={conti.id} title={conti.title} />
-      <span className="shrink-0 pr-3 text-ink-600">›</span>
+      <div className="flex shrink-0 items-center gap-0.5 pr-2.5">
+        <button
+          onClick={() => {
+            if (confirm(`"${conti.title}" 콘티를 복사할까요?`)) void duplicateConti(conti.id);
+          }}
+          className="grid h-8 w-8 place-items-center rounded-lg text-ink-600 transition hover:bg-ink-800 hover:text-ink-200"
+          title="이 콘티 복사"
+          aria-label={`${conti.title} 복사`}
+        >
+          <CopyIcon />
+        </button>
+        <PdfButton contiId={conti.id} title={conti.title} />
+        <ChevronRight className="h-4 w-4 text-ink-600" />
+      </div>
     </li>
   );
 }

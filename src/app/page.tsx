@@ -1,6 +1,7 @@
 import ContiBrowser from "@/components/ContiBrowser";
 import NewContiForm from "@/components/NewContiForm";
 import ThemeToggle from "@/components/ThemeToggle";
+import { LogoMark } from "@/components/icons";
 import { requireSession } from "@/lib/auth";
 import { listAllFolders, listContis } from "@/lib/queries";
 import { logout } from "./actions";
@@ -13,16 +14,27 @@ export default async function HomePage() {
   const topFolders = allFolders.filter((f) => f.parent_id === null);
 
   return (
-    <main className="mx-auto max-w-3xl px-5 py-8">
-      <header className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-200">Cadence</h1>
-          <p className="mt-0.5 text-sm text-ink-400">{session.name}님</p>
+    <main className="mx-auto max-w-3xl px-5 py-10 sm:py-14">
+      <header className="mb-10 flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-ink-700 bg-ink-900 text-ink-200 shadow-[var(--shadow-card)]">
+            <LogoMark />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-[1.15rem] font-semibold leading-tight tracking-tight text-ink-200 sm:text-[1.35rem]">
+              Worship
+              <br className="sm:hidden" />
+              <span className="hidden sm:inline"> </span>
+              Conti Share
+            </h1>
+            <p className="mt-0.5 truncate text-sm text-ink-400">{session.name}님</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex shrink-0 items-center gap-0.5">
           <ThemeToggle />
           <form action={logout}>
-            <button className="rounded-lg border border-ink-700 px-3 py-1.5 text-sm text-ink-400 hover:text-ink-200">
+            <button className="rounded-lg px-2.5 py-2 text-sm text-ink-400 transition hover:bg-ink-800 hover:text-ink-200">
               로그아웃
             </button>
           </form>

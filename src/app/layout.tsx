@@ -2,14 +2,14 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Cadence",
-  description: "Cadence · 찬양팀 콘티 · 악보 · 레퍼런스 공유",
+  title: "Worship Conti Share",
+  description: "Worship Conti Share · 콘티 · 악보 · 레퍼런스 공유",
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f4f6f9" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b0d10" },
+    { media: "(prefers-color-scheme: light)", color: "#fbfbfa" },
+    { media: "(prefers-color-scheme: dark)", color: "#191919" },
   ],
   width: "device-width",
   initialScale: 1,
