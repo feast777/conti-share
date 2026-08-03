@@ -1,6 +1,8 @@
 "use client";
 
 import { parseChord } from "@/lib/chords";
+import { findVoicings } from "@/lib/guitar";
+import GuitarDiagram from "./GuitarDiagram";
 
 const PC: Record<string, number> = {
   C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3, E: 4, F: 5, "F#": 6, Gb: 6,
@@ -9,9 +11,6 @@ const PC: Record<string, number> = {
 };
 const pcOf = (n: string) => PC[n] ?? 0;
 
-/** 기타 6줄 개방현 (6번줄 E 부터) */
-const STRINGS = ["E", "A", "D", "G", "B", "E"];
-const FRETS = 5;
 
 /** 코드 하나를 구성음·피아노·기타 지판으로 보여준다 */
 export default function ChordCard({ name }: { name: string }) {
@@ -27,6 +26,10 @@ export default function ChordCard({ name }: { name: string }) {
   const chordPcs = new Set(info.notes.map(pcOf));
   const rootPc = pcOf(info.notes[0]);
   const bassPc = info.bass ? pcOf(info.bass) : null;
+
+  // 잡을 수 있는 기타 폼 (완전5도는 생략 가능한 음으로 알려준다)
+  const fifthPc = info.intervals.includes(7) ? (rootPc + 7) % 12 : null;
+  const voicings = findVoicings([...chordPcs], rootPc, fifthPc, bassPc, 4);
 
   // 피아노 한 옥타브 (C~B)
   const WHITE = [0, 2, 4, 5, 7, 9, 11];
@@ -97,65 +100,27 @@ export default function ChordCard({ name }: { name: string }) {
         ))}
       </div>
 
-      {/* 기타 지판 — 1~5프렛에서 코드음 위치 (루트는 진하게) */}
+      {/* 기타 운지 — 잡을 수 있는 폼 여러 개 */}
       <p className="mt-4 mb-1.5 text-xs font-medium uppercase tracking-wider text-ink-600">
-        기타 (1~5프렛)
+        기타 운지
       </p>
-      <div className="max-w-[16rem]">
-        <div className="flex gap-1 text-[0.6rem] text-ink-600">
-          <span className="w-6" />
-          {Array.from({ length: FRETS }, (_, f) => (
-            <span key={f} className="flex-1 text-center">
-              {f + 1}
-            </span>
-          ))}
-        </div>
-        {[...STRINGS].reverse().map((open, idx) => {
-          const stringIdx = STRINGS.length - 1 - idx; // 표시는 1번줄이 위
-          const openPc = pcOf(open);
-          return (
-            <div key={`${open}-${stringIdx}`} className="flex items-center gap-1">
-              <span
-                className={`w-6 text-right text-[0.65rem] ${
-                  chordPcs.has(openPc) ? "font-semibold text-accent" : "text-ink-600"
-                }`}
-                title={chordPcs.has(openPc) ? "개방현으로 사용 가능" : ""}
-              >
-                {open}
-                {chordPcs.has(openPc) ? "○" : ""}
-              </span>
-              {Array.from({ length: FRETS }, (_, f) => {
-                const pc = (openPc + f + 1) % 12;
-                const on = chordPcs.has(pc);
-                const isRoot = pc === rootPc;
-                const isBass = bassPc !== null && pc === bassPc;
-                return (
-                  <span
-                    key={f}
-                    className="flex flex-1 items-center justify-center border-l border-ink-700 py-[3px]"
-                  >
-                    <span
-                      className={`grid h-4 w-4 place-items-center rounded-full text-[0.55rem] font-semibold ${
-                        on
-                          ? isRoot
-                            ? "bg-accent text-on-accent"
-                            : isBass
-                              ? "border border-accent text-accent"
-                              : "bg-accent-soft text-accent"
-                          : ""
-                      }`}
-                    >
-                      {on ? (isRoot ? "R" : "") : ""}
-                    </span>
-                  </span>
-                );
-              })}
-            </div>
-          );
-        })}
-        <p className="mt-1.5 text-[0.65rem] leading-relaxed text-ink-600">
-          동그라미가 코드에 속한 음이에요. <span className="text-accent">R</span> = 루트,
-          현 이름 옆 ○ 는 개방현으로 쓸 수 있다는 뜻.
+      <div>
+        {voicings.length === 0 ? (
+          <p className="text-xs text-ink-600">이 코드는 6줄로 잡을 수 있는 폼을 찾지 못했어요.</p>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {voicings.map((v, i) => (
+              <div key={i} className="text-center">
+                <GuitarDiagram v={v} />
+                <p className="mt-0.5 text-[0.6rem] text-ink-600">
+                  {v.frets.map((f) => (f < 0 ? "x" : f)).join(" ")}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="mt-2 text-[0.65rem] leading-relaxed text-ink-600">
+          위 ○ 는 개방현, × 는 치지 않는 줄. 굵은 가로선은 바레예요.
         </p>
       </div>
     </div>
