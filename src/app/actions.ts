@@ -206,6 +206,23 @@ export async function duplicateConti(id: string) {
 }
 
 // ─────────────────────────────────────────────
+// 교회 설정
+// ─────────────────────────────────────────────
+/** 우리 교회(찬양팀) 이름을 저장한다. */
+export async function saveChurchName(name: string) {
+  const session = await requireSession();
+  const clean = name.trim().slice(0, 40);
+  const { error } = await db
+    .from("church_setting")
+    .upsert(
+      { church: session.church, name: clean, updated_at: new Date().toISOString() },
+      { onConflict: "church" }
+    );
+  if (error) throw error;
+  revalidatePath("/");
+}
+
+// ─────────────────────────────────────────────
 // 곡 검색 · 재사용
 // ─────────────────────────────────────────────
 /** 곡 제목으로 지난 콘티를 뒤진다 */

@@ -210,3 +210,14 @@ export async function searchSongs(church: string, query: string): Promise<SongHi
     }))
     .sort((a, b) => b.service_date.localeCompare(a.service_date));
 }
+
+/** 교회 이름 (설정 안 했으면 빈 문자열) */
+export async function getChurchName(church: string): Promise<string> {
+  const { data, error } = await db
+    .from("church_setting")
+    .select("name")
+    .eq("church", church)
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.name as string) ?? "";
+}
