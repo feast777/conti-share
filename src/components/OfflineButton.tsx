@@ -75,16 +75,16 @@ export default function OfflineButton({ urls }: { urls: string[] }) {
       <button
         onClick={download}
         disabled={!!progress && progress.done < progress.total}
-        className="rounded-lg border border-ink-700 px-2.5 py-1.5 text-xs text-ink-400 transition hover:text-ink-200 disabled:opacity-60"
+        className="shrink-0 whitespace-nowrap rounded-md border border-ink-700 px-2 py-1 text-xs text-ink-400 transition hover:text-ink-200 disabled:opacity-60"
         title="악보를 기기에 받아두면 인터넷이 없어도 볼 수 있어요"
       >
         {progress
           ? progress.done >= progress.total
-            ? "받기 완료"
-            : `받는 중 ${progress.done}/${progress.total}`
+            ? "저장됨"
+            : `${progress.done}/${progress.total}`
           : saved
-            ? "받기 완료"
-            : "오프라인 저장"}
+            ? "저장됨"
+            : "↓ 저장"}
       </button>
     </div>
   );

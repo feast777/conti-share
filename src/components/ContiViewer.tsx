@@ -7,6 +7,7 @@ import { getPdfDocument } from "@/lib/pdf";
 import type { Annotation, Conti, SheetLayout, Stroke } from "@/lib/types";
 import type { Tool } from "./AnnotationCanvas";
 import ChordPanel from "./ChordPanel";
+import { ChordIcon, NoteIcon, TempoIcon, VideoIcon } from "./icons";
 import Metronome from "./Metronome";
 import OfflineButton from "./OfflineButton";
 import ReferencePanel from "./ReferencePanel";
@@ -400,7 +401,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
       {/* 상단 바 */}
-      <header className="flex shrink-0 items-center gap-2 border-b border-ink-800 px-2 py-1.5">
+      <header className="flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-ink-800 px-2 py-1.5">
         <Link
           href={conti.folder_id ? `/folder/${conti.folder_id}` : "/"}
           className="rounded-md px-2 py-1 text-lg text-ink-400 hover:bg-ink-800 hover:text-ink-200"
@@ -431,7 +432,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
 
         <button
           onClick={() => setFit((f) => (f === "contain" ? "width" : "contain"))}
-          className="rounded-md border border-ink-700 px-2 py-1 text-xs text-ink-400 hover:text-ink-200"
+          className="shrink-0 whitespace-nowrap rounded-md border border-ink-700 px-2 py-1 text-xs text-ink-400 hover:text-ink-200"
           title="화면맞춤 / 폭맞춤"
         >
           {fit === "contain" ? "화면" : "폭"}
@@ -444,7 +445,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
         <button
           onClick={() => void pullAnnotations()}
           disabled={syncing}
-          className="rounded-md border border-ink-700 px-2 py-1 text-xs text-ink-400 transition hover:text-ink-200 disabled:opacity-50"
+          className="shrink-0 rounded-md border border-ink-700 px-2 py-1 text-xs text-ink-400 transition hover:text-ink-200 disabled:opacity-50"
           title={
             syncedAt
               ? `팀원 메모 새로 받기 (마지막 ${new Date(syncedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })})`
@@ -456,7 +457,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
 
         <button
           onClick={() => setPedalTest((v) => !v)}
-          className={`rounded-md border px-2 py-1 text-xs transition ${
+          className={`shrink-0 whitespace-nowrap rounded-md border px-2 py-1 text-xs transition ${
             pedalTest ? "border-accent text-accent" : "border-ink-700 text-ink-400 hover:text-ink-200"
           }`}
           title="페이지터너 페달이 보내는 키 확인"
@@ -466,7 +467,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
 
         <button
           onClick={() => setAnnotating((a) => !a)}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+          className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition ${
             annotating ? "bg-accent text-on-accent" : "border border-ink-700 text-ink-400"
           }`}
         >
@@ -475,7 +476,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
 
         <Link
           href={`/conti/${conti.id}/edit`}
-          className="rounded-md border border-ink-700 px-2 py-1.5 text-xs text-ink-400 hover:text-ink-200"
+          className="shrink-0 whitespace-nowrap rounded-md border border-ink-700 px-2 py-1.5 text-xs text-ink-400 hover:text-ink-200"
         >
           편집
         </Link>
@@ -702,38 +703,47 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
           <span className="h-1 w-10 rounded-full bg-ink-600" />
         </div>
 
-        <div className="flex items-center gap-1 px-2 pb-1">
+        <div className="flex items-center gap-1 overflow-x-auto px-2 pb-1">
           <button
             onClick={() => {
               setPanelTab("ref");
               openPanel();
             }}
-            className={`rounded-md px-3 py-1 text-xs ${
-              panelH > 0 && panelTab === "ref" ? "bg-ink-800 text-ink-200" : "text-ink-400"
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              panelH > 0 && panelTab === "ref"
+                ? "bg-accent-soft text-accent"
+                : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
             }`}
           >
-            레퍼런스 {song.references.length > 0 && `(${song.references.length})`}
+            <VideoIcon className="h-3.5 w-3.5" />
+            영상 {song.references.length > 0 && `(${song.references.length})`}
           </button>
           <button
             onClick={() => {
               setPanelTab("memo");
               openPanel();
             }}
-            className={`rounded-md px-3 py-1 text-xs ${
-              panelH > 0 && panelTab === "memo" ? "bg-ink-800 text-ink-200" : "text-ink-400"
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              panelH > 0 && panelTab === "memo"
+                ? "bg-accent-soft text-accent"
+                : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
             }`}
           >
-            곡 메모
+            <NoteIcon className="h-3.5 w-3.5" />
+            메모
           </button>
           <button
             onClick={() => {
               setPanelTab("chord");
               openPanel();
             }}
-            className={`rounded-md px-3 py-1 text-xs ${
-              panelH > 0 && panelTab === "chord" ? "bg-ink-800 text-ink-200" : "text-ink-400"
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              panelH > 0 && panelTab === "chord"
+                ? "bg-accent-soft text-accent"
+                : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
             }`}
           >
+            <ChordIcon className="h-3.5 w-3.5" />
             코드
           </button>
           <button
@@ -741,11 +751,14 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
               setPanelTab("beat");
               openPanel();
             }}
-            className={`rounded-md px-3 py-1 text-xs ${
-              panelH > 0 && panelTab === "beat" ? "bg-ink-800 text-ink-200" : "text-ink-400"
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              panelH > 0 && panelTab === "beat"
+                ? "bg-accent-soft text-accent"
+                : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
             }`}
           >
-            박자
+            <TempoIcon className="h-3.5 w-3.5" />
+            Tempo
           </button>
           <div className="flex-1" />
           <button
