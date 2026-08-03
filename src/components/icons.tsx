@@ -82,3 +82,41 @@ export function MoonIcon({ className = "h-4 w-4" }: { className?: string }) {
     </svg>
   );
 }
+
+export function VideoIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...base} aria-hidden>
+      <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
+      <path d="m10.5 9.5 4.5 3-4.5 3z" />
+    </svg>
+  );
+}
+
+export function NoteIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...base} aria-hidden>
+      <path d="M5 4.5h9L19 9v10.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-14a1 1 0 0 1 1-1z" />
+      <path d="M14 4.5V9h4.5M8 13h7M8 16.5h5" />
+    </svg>
+  );
+}
+
+export function ChordIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...base} aria-hidden>
+      <path d="M4 6.5h16M4 12h16M4 17.5h16" />
+      <circle cx="8.5" cy="6.5" r="1.7" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="12" r="1.7" fill="currentColor" stroke="none" />
+      <circle cx="10.5" cy="17.5" r="1.7" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function TempoIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...base} aria-hidden>
+      <path d="M9 3.5h6l3.5 17H5.5z" />
+      <path d="M12 8.5v8" />
+    </svg>
+  );
+}
