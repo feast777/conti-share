@@ -1,4 +1,5 @@
 import ContiBrowser from "@/components/ContiBrowser";
+import HomeHero from "@/components/HomeHero";
 import NewContiForm from "@/components/NewContiForm";
 import ThemeToggle from "@/components/ThemeToggle";
 import { LogoMark } from "@/components/icons";
@@ -10,8 +11,10 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const session = await requireSession();
-  const [allFolders, contis] = await Promise.all([listAllFolders(), listContis(null)]);
+  // 히어로는 폴더 안까지 포함한 전체에서 '다음 콘티'를 찾는다
+  const [allFolders, allContis] = await Promise.all([listAllFolders(), listContis("all")]);
   const topFolders = allFolders.filter((f) => f.parent_id === null);
+  const contis = allContis.filter((c) => c.folder_id === null);
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-10 sm:py-14">
@@ -27,7 +30,6 @@ export default async function HomePage() {
               <span className="hidden sm:inline"> </span>
               Conti Share
             </h1>
-            <p className="mt-0.5 truncate text-sm text-ink-400">{session.name}님</p>
           </div>
         </div>
 
@@ -40,6 +42,13 @@ export default async function HomePage() {
           </form>
         </div>
       </header>
+
+      <HomeHero
+        name={session.name}
+        contis={allContis}
+        totalCount={allContis.length}
+        folderCount={allFolders.length}
+      />
 
       <NewContiForm />
 
