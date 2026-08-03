@@ -43,12 +43,7 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <HomeHero
-        name={session.name}
-        contis={allContis}
-        totalCount={allContis.length}
-        folderCount={allFolders.length}
-      />
+      <HomeHero name={session.name} contis={allContis} folders={allFolders} />
 
       <NewContiForm />
 
