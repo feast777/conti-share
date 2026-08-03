@@ -4,6 +4,17 @@
 create extension if not exists "pgcrypto";
 
 -- ─────────────────────────────────────────────
+-- 교회 설정 (교회마다 한 줄). 이름은 화면 상단에 표시된다.
+-- ─────────────────────────────────────────────
+create table if not exists church_setting (
+  church     text primary key,              -- main, c2, c3 … (로그인 비밀번호로 정해짐)
+  name       text not null default '',      -- 교회/찬양팀 이름
+  updated_at timestamptz not null default now()
+);
+
+alter table church_setting enable row level security;
+
+-- ─────────────────────────────────────────────
 -- 폴더 (콘티를 담는 한 단계 폴더)
 -- ─────────────────────────────────────────────
 create table if not exists folder (
