@@ -40,6 +40,7 @@ import { readPdfPageCount } from "@/lib/pdf";
 import type { Conti, SheetLayout, Song } from "@/lib/types";
 import DebouncedField from "./DebouncedField";
 import PptxButton from "./PptxButton";
+import SongSearch from "./SongSearch";
 
 const ACCEPT = ".pdf,image/png,image/jpeg,image/webp";
 
@@ -182,20 +183,23 @@ export default function ContiEditor({ conti }: { conti: Conti }) {
       </DndContext>
 
       {/* 곡 추가 */}
-      <div className="mt-4 flex gap-2">
-        <input
-          value={newSong}
-          onChange={(e) => setNewSong(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleAddSong()}
-          placeholder="곡 제목을 입력하고 Enter"
-          className="flex-1"
-        />
-        <button
-          onClick={handleAddSong}
-          className="rounded-lg bg-accent px-4 py-2 font-medium text-on-accent"
-        >
-          곡 추가
-        </button>
+      <div className="mt-4 space-y-2">
+        <SongSearch contiId={conti.id} />
+        <div className="flex gap-2">
+          <input
+            value={newSong}
+            onChange={(e) => setNewSong(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddSong()}
+            placeholder="곡 제목을 입력하고 Enter"
+            className="flex-1"
+          />
+          <button
+            onClick={handleAddSong}
+            className="rounded-lg bg-accent px-4 py-2 font-medium text-on-accent"
+          >
+            곡 추가
+          </button>
+        </div>
       </div>
 
       <div className="mt-12 border-t border-ink-800 pt-4">

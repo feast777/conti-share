@@ -96,3 +96,15 @@ export type FolderSummary = {
   conti_count: number;
   subfolder_count: number;
 };
+
+/** 곡 검색 결과 — 이 곡을 어느 콘티에서 언제 불렀는지 */
+export type SongHit = {
+  song_id: string;
+  title: string;
+  song_key: string;
+  bpm: string;
+  sheet_count: number;
+  conti_id: string;
+  conti_title: string;
+  service_date: string;
+};

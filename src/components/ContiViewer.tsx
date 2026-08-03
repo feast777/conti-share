@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { saveAnnotation, updateSong } from "@/app/actions";
+import { refreshAnnotations, saveAnnotation, updateSong } from "@/app/actions";
 import { getPdfDocument } from "@/lib/pdf";
 import type { Annotation, Conti, SheetLayout, Stroke } from "@/lib/types";
 import type { Tool } from "./AnnotationCanvas";
@@ -66,17 +66,48 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
     return map;
   });
 
+  // 다른 사람이 쓴 메모는 주기적으로 다시 받아온다 (같이 보는 화면 동기화)
+  const [remote, setRemote] = useState<Annotation[]>(annotations);
+  useEffect(() => setRemote(annotations), [annotations]);
+  const [syncing, setSyncing] = useState(false);
+  const [syncedAt, setSyncedAt] = useState<number | null>(null);
+
+  const pullAnnotations = useCallback(async () => {
+    setSyncing(true);
+    try {
+      setRemote(await refreshAnnotations(conti.id));
+      setSyncedAt(Date.now());
+    } catch {
+      /* 잠깐 실패해도 다음 주기에 다시 받는다 */
+    } finally {
+      setSyncing(false);
+    }
+  }, [conti.id]);
+
+  // 20초마다 (화면을 보고 있을 때만) 자동으로 받아온다
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === "visible") void pullAnnotations();
+    };
+    const id = setInterval(tick, 20000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [pullAnnotations]);
+
   const others = useMemo(() => {
     const map: Record<string, Stroke[]> = {};
     const authors: Record<string, Set<string>> = {};
-    for (const a of annotations) {
+    for (const a of remote) {
       if (a.author === me || !a.strokes?.length) continue;
       const k = key(a.sheet_id, a.page);
       (map[k] ??= []).push(...a.strokes);
       (authors[k] ??= new Set()).add(a.author);
     }
     return { map, authors };
-  }, [annotations, me]);
+  }, [remote, me]);
 
   const historyRef = useRef<Record<string, Stroke[][]>>({});
 
@@ -402,6 +433,19 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
           title="화면맞춤 / 폭맞춤"
         >
           {fit === "contain" ? "화면" : "폭"}
+        </button>
+
+        <button
+          onClick={() => void pullAnnotations()}
+          disabled={syncing}
+          className="rounded-md border border-ink-700 px-2 py-1 text-xs text-ink-400 transition hover:text-ink-200 disabled:opacity-50"
+          title={
+            syncedAt
+              ? `팀원 메모 새로 받기 (마지막 ${new Date(syncedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })})`
+              : "팀원 메모 새로 받기"
+          }
+        >
+          {syncing ? "…" : "↻"}
         </button>
 
         <button
