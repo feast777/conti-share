@@ -124,7 +124,7 @@ export default function PptxButton({
       <button
         onClick={extract}
         disabled={!!busy}
-        className="rounded-lg border border-ink-700 px-2.5 py-1.5 text-sm text-ink-400 hover:text-white disabled:opacity-50"
+        className="rounded-lg border border-ink-700 px-2.5 py-1.5 text-sm text-ink-400 hover:text-ink-200 disabled:opacity-50"
         title="악보(PDF·이미지)에서 가사를 자동으로 뽑아 가사칸을 채웁니다"
       >
         악보에서 추출
@@ -144,7 +144,7 @@ export default function PptxButton({
       <button
         onClick={makePptx}
         disabled={!!busy}
-        className="rounded-lg border border-ink-700 px-2.5 py-1.5 text-sm text-ink-400 hover:text-white disabled:opacity-50"
+        className="rounded-lg border border-ink-700 px-2.5 py-1.5 text-sm text-ink-400 hover:text-ink-200 disabled:opacity-50"
         title="가사칸의 가사로 찬양 PPT(.pptx) 만들기"
       >
         {busy ?? "가사 PPT"}

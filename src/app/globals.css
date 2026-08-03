@@ -1,9 +1,25 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic",
-    "Noto Sans KR", sans-serif;
+  --font-sans: "Pretendard Variable", Pretendard, system-ui, -apple-system, "Apple SD Gothic Neo",
+    "Malgun Gothic", "Noto Sans KR", sans-serif;
 
+  /* 기본(라이트) 팔레트 — ink 스케일은 의미 기준: 950=페이지, 900=카드, 200=본문 글자 */
+  --color-ink-950: #f4f6f9; /* 페이지 배경 */
+  --color-ink-900: #ffffff; /* 카드 배경 */
+  --color-ink-800: #e9edf2; /* 뷰어 배경 · hover */
+  --color-ink-700: #dbe0e7; /* 보더 */
+  --color-ink-600: #8b94a1; /* 옅은 글자 */
+  --color-ink-400: #5a6473; /* 보조 글자 */
+  --color-ink-200: #1b2430; /* 본문 글자 */
+
+  --color-accent: #2f6fed;
+  --color-accent-soft: #dce8ff;
+  --color-on-accent: #ffffff; /* accent 위 글자 */
+}
+
+/* 다크 테마 — 같은 토큰을 값만 갈아끼운다 */
+:root[data-theme="dark"] {
   --color-ink-950: #0b0d10;
   --color-ink-900: #12151a;
   --color-ink-800: #1a1f26;
@@ -14,6 +30,7 @@
 
   --color-accent: #6ea8ff;
   --color-accent-soft: #1e3358;
+  --color-on-accent: #0a1220;
 }
 
 html,
@@ -45,11 +62,16 @@ button {
 input,
 textarea,
 select {
-  background: var(--color-ink-800);
+  background: var(--color-ink-900);
   border: 1px solid var(--color-ink-700);
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
   outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-ink-600);
 }
 
 input:focus,

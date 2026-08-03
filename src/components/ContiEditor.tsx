@@ -105,10 +105,10 @@ export default function ContiEditor({ conti }: { conti: Conti }) {
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 pb-24">
       <header className="mb-6 flex flex-wrap items-center gap-2">
-        <Link href={`/conti/${conti.id}`} className="text-lg text-ink-400 hover:text-white">
+        <Link href={`/conti/${conti.id}`} className="text-lg text-ink-400 hover:text-ink-200">
           ‹
         </Link>
-        <h1 className="flex-1 text-lg font-semibold text-white">콘티 편집</h1>
+        <h1 className="flex-1 text-lg font-semibold text-ink-200">콘티 편집</h1>
         <PptxButton
           contiId={conti.id}
           title={conti.title}
@@ -125,14 +125,14 @@ export default function ContiEditor({ conti }: { conti: Conti }) {
         />
         <button
           onClick={() => void duplicateConti(conti.id)}
-          className="rounded-lg border border-ink-700 px-3 py-1.5 text-sm text-ink-400 hover:text-white"
+          className="rounded-lg border border-ink-700 px-3 py-1.5 text-sm text-ink-400 hover:text-ink-200"
           title="곡 · 악보 · 레퍼런스를 그대로 복사해 새 콘티를 만듭니다"
         >
           복사
         </button>
         <Link
           href={`/conti/${conti.id}`}
-          className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-ink-950"
+          className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-on-accent"
         >
           보기
         </Link>
@@ -192,7 +192,7 @@ export default function ContiEditor({ conti }: { conti: Conti }) {
         />
         <button
           onClick={handleAddSong}
-          className="rounded-lg bg-accent px-4 py-2 font-medium text-ink-950"
+          className="rounded-lg bg-accent px-4 py-2 font-medium text-on-accent"
         >
           곡 추가
         </button>
@@ -317,7 +317,7 @@ function SongCard({
           ref={setActivatorNodeRef}
           {...attributes}
           {...listeners}
-          className="mt-1 flex shrink-0 cursor-grab touch-none items-center gap-1 rounded px-1 py-1 text-ink-500 hover:text-white active:cursor-grabbing"
+          className="mt-1 flex shrink-0 cursor-grab touch-none items-center gap-1 rounded px-1 py-1 text-ink-500 hover:text-ink-200 active:cursor-grabbing"
           title="끌어서 순서 변경"
           aria-label={`${index + 1}번 곡 순서 바꾸기`}
         >
@@ -386,7 +386,7 @@ function SongCard({
                   <button
                     onClick={() => moveSheet(idx, -1)}
                     disabled={idx === 0}
-                    className="px-1 text-ink-500 hover:text-white disabled:opacity-30"
+                    className="px-1 text-ink-500 hover:text-ink-200 disabled:opacity-30"
                     title="앞으로"
                     aria-label="악보 앞으로"
                   >
@@ -396,7 +396,7 @@ function SongCard({
                   <button
                     onClick={() => moveSheet(idx, 1)}
                     disabled={idx === song.sheets.length - 1}
-                    className="px-1 text-ink-500 hover:text-white disabled:opacity-30"
+                    className="px-1 text-ink-500 hover:text-ink-200 disabled:opacity-30"
                     title="뒤로"
                     aria-label="악보 뒤로"
                   >
@@ -424,7 +424,7 @@ function SongCard({
           <button
             onClick={() => fileRef.current?.click()}
             disabled={!!uploading}
-            className="rounded-lg border border-dashed border-ink-600 px-2.5 py-1 text-xs text-ink-400 hover:text-white disabled:opacity-50"
+            className="rounded-lg border border-dashed border-ink-600 px-2.5 py-1 text-xs text-ink-400 hover:text-ink-200 disabled:opacity-50"
           >
             {uploading ? `${uploading} 올리는 중…` : "+ PDF · 이미지"}
           </button>
@@ -448,8 +448,8 @@ function SongCard({
                 onClick={() => chooseLayout(l.value)}
                 className={`rounded-md border px-2.5 py-1 text-xs transition ${
                   layout === l.value
-                    ? "border-accent text-white"
-                    : "border-ink-700 text-ink-400 hover:text-white"
+                    ? "border-accent text-ink-200"
+                    : "border-ink-700 text-ink-400 hover:text-ink-200"
                 }`}
               >
                 {l.label}
@@ -503,7 +503,7 @@ function SongCard({
           />
           <button
             onClick={handleAddRef}
-            className="shrink-0 rounded-lg border border-ink-700 px-3 text-sm text-ink-400 hover:text-white"
+            className="shrink-0 rounded-lg border border-ink-700 px-3 text-sm text-ink-400 hover:text-ink-200"
           >
             추가
           </button>
