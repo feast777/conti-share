@@ -22,7 +22,8 @@ function safeEqual(a: string, b: string) {
   return ab.length === bb.length && timingSafeEqual(ab, bb);
 }
 
-export type Session = { name: string };
+/** church = 교회 구분. 로그인한 비밀번호로 정해지고, 자기 교회 자료만 보인다. */
+export type Session = { name: string; church: string };
 
 export async function getSession(): Promise<Session | null> {
   const raw = (await cookies()).get(COOKIE)?.value;
@@ -32,9 +33,10 @@ export async function getSession(): Promise<Session | null> {
   if (!payload || !sig || !safeEqual(sign(payload), sig)) return null;
 
   try {
-    const { name, exp } = JSON.parse(Buffer.from(payload, "base64url").toString());
+    const { name, church, exp } = JSON.parse(Buffer.from(payload, "base64url").toString());
     if (typeof exp !== "number" || Date.now() > exp) return null;
-    return { name: String(name) };
+    // 예전에 로그인한 사람은 church 가 없으니 기존 교회(main)로 본다
+    return { name: String(name), church: String(church || "main") };
   } catch {
     return null;
   }
@@ -47,9 +49,9 @@ export async function requireSession(): Promise<Session> {
   return session;
 }
 
-export async function createSession(name: string) {
+export async function createSession(name: string, church: string) {
   const payload = Buffer.from(
-    JSON.stringify({ name, exp: Date.now() + MAX_AGE * 1000 })
+    JSON.stringify({ name, church, exp: Date.now() + MAX_AGE * 1000 })
   ).toString("base64url");
 
   (await cookies()).set(COOKIE, `${payload}.${sign(payload)}`, {
@@ -65,9 +67,23 @@ export async function destroySession() {
   (await cookies()).delete(COOKIE);
 }
 
-/** 팀 공용 비밀번호 확인 */
-export function checkTeamPassword(input: string) {
-  const expected = process.env.TEAM_PASSWORD;
-  if (!expected) throw new Error("TEAM_PASSWORD 환경변수가 없습니다.");
-  return safeEqual(sign(input), sign(expected));
+/**
+ * 비밀번호로 교회를 찾는다. 맞는 게 없으면 null.
+ * TEAM_PASSWORD → 기존 교회(main), TEAM_PASSWORD_2·_3… → 교회 c2·c3…
+ * (교회를 더 늘리려면 TEAM_PASSWORD_4 처럼 환경변수만 추가하면 된다)
+ */
+export function findChurchByPassword(input: string): string | null {
+  const entries: [string, string | undefined][] = [["main", process.env.TEAM_PASSWORD]];
+  for (const [key, value] of Object.entries(process.env)) {
+    const m = key.match(/^TEAM_PASSWORD_(\d+)$/);
+    if (m) entries.push([`c${m[1]}`, value]);
+  }
+
+  const configured = entries.filter(([, pw]) => pw);
+  if (configured.length === 0) throw new Error("TEAM_PASSWORD 환경변수가 없습니다.");
+
+  for (const [church, pw] of configured) {
+    if (safeEqual(sign(input), sign(pw as string))) return church;
+  }
+  return null;
 }

@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const session = await requireSession();
   // 히어로는 폴더 안까지 포함한 전체에서 '다음 콘티'를 찾는다
-  const [allFolders, allContis] = await Promise.all([listAllFolders(), listContis("all")]);
+  const [allFolders, allContis] = await Promise.all([listAllFolders(session.church), listContis(session.church, "all")]);
   const topFolders = allFolders.filter((f) => f.parent_id === null);
   const contis = allContis.filter((c) => c.folder_id === null);
 

@@ -8,6 +8,7 @@ create extension if not exists "pgcrypto";
 -- ─────────────────────────────────────────────
 create table if not exists folder (
   id          uuid primary key default gen_random_uuid(),
+  church      text not null default 'main',   -- 교회 구분 (로그인 비밀번호로 정해진다)
   name        text not null,
   -- 상위 폴더 (비어있으면 최상위). 폴더 삭제 시 하위 폴더는 액션에서 한 단계 위로 올린다.
   parent_id   uuid references folder(id) on delete set null,
@@ -23,6 +24,7 @@ create index if not exists folder_parent_idx on folder (parent_id);
 -- ─────────────────────────────────────────────
 create table if not exists conti (
   id           uuid primary key default gen_random_uuid(),
+  church       text not null default 'main',  -- 교회 구분
   title        text not null,
   service_date date not null default current_date,
   note         text not null default '',        -- 콘티 전체 안내사항
@@ -35,6 +37,8 @@ create table if not exists conti (
 
 create index if not exists conti_service_date_idx on conti (service_date desc);
 create index if not exists conti_folder_idx on conti (folder_id);
+create index if not exists conti_church_idx on conti (church, service_date desc);
+create index if not exists folder_church_idx on folder (church);
 
 -- ─────────────────────────────────────────────
 -- 곡

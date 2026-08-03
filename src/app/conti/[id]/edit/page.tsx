@@ -7,9 +7,9 @@ export const dynamic = "force-dynamic";
 
 export default async function EditContiPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requireSession();
+  const session = await requireSession();
 
-  const conti = await getConti(id);
+  const conti = await getConti(id, session.church);
   if (!conti) notFound();
 
   return <ContiEditor conti={conti} />;

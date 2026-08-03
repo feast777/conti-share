@@ -9,12 +9,12 @@ export const dynamic = "force-dynamic";
 
 export default async function FolderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requireSession();
+  const session = await requireSession();
 
-  const folder = await getFolder(id);
+  const folder = await getFolder(id, session.church);
   if (!folder) notFound();
 
-  const [allFolders, contis] = await Promise.all([listAllFolders(), listContis(id)]);
+  const [allFolders, contis] = await Promise.all([listAllFolders(session.church), listContis(session.church, id)]);
   const byId = new Map(allFolders.map((f) => [f.id, f]));
 
   const children = allFolders.filter((f) => f.parent_id === id);

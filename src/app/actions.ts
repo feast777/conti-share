@@ -2,7 +2,7 @@
 
 import { revalidatePath, unstable_cache } from "next/cache";
 import { redirect } from "next/navigation";
-import { checkTeamPassword, createSession, destroySession, requireSession } from "@/lib/auth";
+import { createSession, destroySession, findChurchByPassword, requireSession } from "@/lib/auth";
 import { SHEET_BUCKET, db } from "@/lib/db";
 import { getAnnotations, getConti } from "@/lib/queries";
 import type { SheetKind, SheetLayout, Stroke, YoutubeHit } from "@/lib/types";
@@ -15,15 +15,53 @@ export async function login(_prev: string | null, formData: FormData): Promise<s
   const password = String(formData.get("password") ?? "");
 
   if (!name) return "이름을 입력해 주세요.";
-  if (!checkTeamPassword(password)) return "팀 비밀번호가 맞지 않습니다.";
+  const church = findChurchByPassword(password);
+  if (!church) return "팀 비밀번호가 맞지 않습니다.";
 
-  await createSession(name);
+  await createSession(name, church);
   redirect("/");
 }
 
 export async function logout() {
   await destroySession();
   redirect("/login");
+}
+
+// ─────────────────────────────────────────────
+// 교회 확인 — 남의 교회 자료를 건드리지 못하게 막는다
+// ─────────────────────────────────────────────
+/** 이 콘티가 내 교회 것인지 확인 */
+async function assertConti(contiId: string, church: string) {
+  const { data } = await db.from("conti").select("id").eq("id", contiId).eq("church", church).maybeSingle();
+  if (!data) throw new Error("권한이 없습니다.");
+}
+
+/** 이 폴더가 내 교회 것인지 확인 */
+async function assertFolder(folderId: string, church: string) {
+  const { data } = await db.from("folder").select("id").eq("id", folderId).eq("church", church).maybeSingle();
+  if (!data) throw new Error("권한이 없습니다.");
+}
+
+/** 이 곡이 속한 콘티가 내 교회 것인지 확인 */
+async function assertSong(songId: string, church: string) {
+  const { data } = await db
+    .from("song")
+    .select("id, conti!inner(church)")
+    .eq("id", songId)
+    .eq("conti.church", church)
+    .maybeSingle();
+  if (!data) throw new Error("권한이 없습니다.");
+}
+
+/** 이 악보가 속한 콘티가 내 교회 것인지 확인 */
+async function assertSheet(sheetId: string, church: string) {
+  const { data } = await db
+    .from("sheet")
+    .select("id, song!inner(conti!inner(church))")
+    .eq("id", sheetId)
+    .eq("song.conti.church", church)
+    .maybeSingle();
+  if (!data) throw new Error("권한이 없습니다.");
 }
 
 // ─────────────────────────────────────────────
@@ -34,10 +72,12 @@ export async function createConti(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const serviceDate = String(formData.get("service_date") ?? "");
   const folderId = (String(formData.get("folder_id") ?? "") || null) as string | null;
+  if (folderId) await assertFolder(folderId, session.church);
 
   const { data, error } = await db
     .from("conti")
     .insert({
+      church: session.church,
       title: title || "새 콘티",
       service_date: serviceDate || new Date().toISOString().slice(0, 10),
       created_by: session.name,
@@ -53,7 +93,8 @@ export async function createConti(formData: FormData) {
 }
 
 export async function updateConti(id: string, patch: { title?: string; service_date?: string; note?: string }) {
-  await requireSession();
+  const session = await requireSession();
+  await assertConti(id, session.church);
   const { error } = await db
     .from("conti")
     .update({ ...patch, updated_at: new Date().toISOString() })
@@ -64,7 +105,8 @@ export async function updateConti(id: string, patch: { title?: string; service_d
 }
 
 export async function deleteConti(id: string) {
-  await requireSession();
+  const session = await requireSession();
+  await assertConti(id, session.church);
 
   // 지운 뒤 원래 있던 폴더로 돌아가기 위해 미리 확인
   const { data: row } = await db.from("conti").select("folder_id").eq("id", id).maybeSingle();
@@ -93,12 +135,14 @@ export async function deleteConti(id: string) {
 export async function duplicateConti(id: string) {
   const session = await requireSession();
 
+  await assertConti(id, session.church);
   const { data: src } = await db.from("conti").select("*").eq("id", id).single();
   if (!src) throw new Error("콘티를 찾을 수 없습니다.");
 
   const { data: newConti, error } = await db
     .from("conti")
     .insert({
+      church: session.church,
       title: `${src.title} (복사)`,
       service_date: new Date().toISOString().slice(0, 10),
       note: src.note,
@@ -168,12 +212,19 @@ export async function createFolder(name: string, parentId: string | null = null)
   const session = await requireSession();
   const clean = name.trim();
   if (!clean) return;
+  if (parentId) await assertFolder(parentId, session.church);
   // 같은 위치의 폴더 개수를 순서값으로 (맨 뒤에 추가)
-  const q = db.from("folder").select("id", { count: "exact", head: true });
+  const q = db.from("folder").select("id", { count: "exact", head: true }).eq("church", session.church);
   const { count } = await (parentId ? q.eq("parent_id", parentId) : q.is("parent_id", null));
   const { error } = await db
     .from("folder")
-    .insert({ name: clean, parent_id: parentId, order_index: count ?? 0, created_by: session.name });
+    .insert({
+      church: session.church,
+      name: clean,
+      parent_id: parentId,
+      order_index: count ?? 0,
+      created_by: session.name,
+    });
   if (error) throw error;
   revalidatePath("/");
   if (parentId) revalidatePath(`/folder/${parentId}`);
@@ -181,9 +232,11 @@ export async function createFolder(name: string, parentId: string | null = null)
 
 /** 같은 위치의 폴더들 순서를 다시 매긴다. */
 export async function reorderFolders(parentId: string | null, orderedIds: string[]) {
-  await requireSession();
+  const session = await requireSession();
   await Promise.all(
-    orderedIds.map((id, i) => db.from("folder").update({ order_index: i }).eq("id", id))
+    orderedIds.map((id, i) =>
+      db.from("folder").update({ order_index: i }).eq("id", id).eq("church", session.church)
+    )
   );
   revalidatePath("/");
   if (parentId) revalidatePath(`/folder/${parentId}`);
@@ -191,8 +244,10 @@ export async function reorderFolders(parentId: string | null, orderedIds: string
 
 /** 폴더를 다른 폴더(또는 최상위)로 옮긴다. 자기 자신·자기 하위로는 못 옮긴다(사이클 방지). */
 export async function moveFolder(folderId: string, parentId: string | null) {
-  await requireSession();
+  const session = await requireSession();
   if (folderId === parentId) return;
+  await assertFolder(folderId, session.church);
+  if (parentId) await assertFolder(parentId, session.church);
 
   // parentId 의 조상들을 거슬러 올라가며 folderId 가 나오면 사이클 → 거부
   let cur: string | null = parentId;
@@ -213,7 +268,8 @@ export async function moveFolder(folderId: string, parentId: string | null) {
 }
 
 export async function renameFolder(id: string, name: string) {
-  await requireSession();
+  const session = await requireSession();
+  await assertFolder(id, session.church);
   const clean = name.trim();
   if (!clean) return;
   const { error } = await db.from("folder").update({ name: clean }).eq("id", id);
@@ -223,7 +279,8 @@ export async function renameFolder(id: string, name: string) {
 }
 
 export async function deleteFolder(id: string) {
-  await requireSession();
+  const session = await requireSession();
+  await assertFolder(id, session.church);
   // 이 폴더의 상위를 알아내, 하위 폴더·콘티를 한 단계 위로 올린다 (콘티는 지워지지 않는다)
   const { data: f } = await db.from("folder").select("parent_id").eq("id", id).maybeSingle();
   const parent = (f?.parent_id as string | null) ?? null;
@@ -244,7 +301,9 @@ export async function deleteFolder(id: string) {
 
 /** 콘티를 폴더로 옮긴다. folderId 가 null 이면 폴더 밖으로 뺀다. */
 export async function moveConti(contiId: string, folderId: string | null) {
-  await requireSession();
+  const session = await requireSession();
+  await assertConti(contiId, session.church);
+  if (folderId) await assertFolder(folderId, session.church);
   const { error } = await db.from("conti").update({ folder_id: folderId }).eq("id", contiId);
   if (error) throw error;
   revalidatePath("/");
@@ -255,7 +314,8 @@ export async function moveConti(contiId: string, folderId: string | null) {
 // 곡
 // ─────────────────────────────────────────────
 export async function addSong(contiId: string, title: string) {
-  await requireSession();
+  const session = await requireSession();
+  await assertConti(contiId, session.church);
   const { count } = await db
     .from("song")
     .select("id", { count: "exact", head: true })
@@ -281,7 +341,8 @@ export async function updateSong(
     sheet_layout?: SheetLayout;
   }
 ) {
-  await requireSession();
+  const session = await requireSession();
+  await assertSong(songId, session.church);
   const { error } = await db.from("song").update(patch).eq("id", songId);
   if (error) throw error;
   revalidatePath(`/conti/${contiId}/edit`);
@@ -289,7 +350,8 @@ export async function updateSong(
 }
 
 export async function deleteSong(songId: string, contiId: string) {
-  await requireSession();
+  const session = await requireSession();
+  await assertSong(songId, session.church);
   const { data: sheets } = await db.from("sheet").select("storage_path").eq("song_id", songId);
   const paths = (sheets ?? []).map((s) => s.storage_path as string);
   if (paths.length) await db.storage.from(SHEET_BUCKET).remove(paths);
@@ -302,7 +364,8 @@ export async function deleteSong(songId: string, contiId: string) {
 
 /** 곡 순서를 통째로 다시 매긴다. */
 export async function reorderSongs(contiId: string, orderedIds: string[]) {
-  await requireSession();
+  const session = await requireSession();
+  await assertConti(contiId, session.church);
   await Promise.all(
     orderedIds.map((id, i) => db.from("song").update({ order_index: i }).eq("id", id))
   );
@@ -314,7 +377,8 @@ export async function reorderSongs(contiId: string, orderedIds: string[]) {
 // 레퍼런스 (유튜브)
 // ─────────────────────────────────────────────
 export async function addReference(songId: string, contiId: string, url: string, label: string) {
-  await requireSession();
+  const session = await requireSession();
+  await assertSong(songId, session.church);
   const clean = url.trim();
   if (!clean) return;
 
@@ -332,7 +396,8 @@ export async function addReference(songId: string, contiId: string, url: string,
 }
 
 export async function deleteReference(refId: string, contiId: string) {
-  await requireSession();
+  const session = await requireSession();
+  await assertConti(contiId, session.church);
   const { error } = await db.from("reference").delete().eq("id", refId);
   if (error) throw error;
   revalidatePath(`/conti/${contiId}/edit`);
@@ -344,7 +409,8 @@ export async function deleteReference(refId: string, contiId: string) {
 // ─────────────────────────────────────────────
 /** 브라우저가 파일을 스토리지로 직접 올릴 수 있는 1회용 URL 을 발급한다. */
 export async function createSheetUploadUrl(songId: string, fileName: string) {
-  await requireSession();
+  const session = await requireSession();
+  await assertSong(songId, session.church);
   const ext = fileName.split(".").pop()?.toLowerCase() ?? "bin";
   const path = `${songId}/${crypto.randomUUID()}.${ext}`;
 
@@ -361,7 +427,8 @@ export async function registerSheet(args: {
   kind: SheetKind;
   pageCount: number;
 }) {
-  await requireSession();
+  const session = await requireSession();
+  await assertSong(args.songId, session.church);
   const { count } = await db
     .from("sheet")
     .select("id", { count: "exact", head: true })
@@ -381,7 +448,8 @@ export async function registerSheet(args: {
 }
 
 export async function deleteSheet(sheetId: string, contiId: string) {
-  await requireSession();
+  const session = await requireSession();
+  await assertSheet(sheetId, session.church);
   const { data: sheet } = await db
     .from("sheet")
     .select("storage_path")
@@ -406,7 +474,8 @@ export async function deleteSheet(sheetId: string, contiId: string) {
 
 /** 곡 안의 악보 순서를 다시 매긴다. (상하·좌우·바둑판 배치 순서에 반영된다) */
 export async function reorderSheets(songId: string, contiId: string, orderedIds: string[]) {
-  await requireSession();
+  const session = await requireSession();
+  await assertSong(songId, session.church);
   await Promise.all(
     orderedIds.map((id, i) => db.from("sheet").update({ order_index: i }).eq("id", id))
   );
@@ -422,8 +491,8 @@ export async function listContiSheets(contiId: string): Promise<{
   title: string;
   sheets: { url: string; kind: SheetKind; fileName: string }[];
 }> {
-  await requireSession();
-  const conti = await getConti(contiId);
+  const session = await requireSession();
+  const conti = await getConti(contiId, session.church);
   if (!conti) return { title: "콘티", sheets: [] };
 
   const sheets = conti.songs
@@ -440,8 +509,8 @@ export async function listContiExport(contiId: string): Promise<{
   sheets: { url: string; kind: SheetKind; fileName: string; sheetId: string; pageCount: number }[];
   annotations: Record<string, Stroke[]>; // "sheetId:page" → 필기들
 }> {
-  await requireSession();
-  const conti = await getConti(contiId);
+  const session = await requireSession();
+  const conti = await getConti(contiId, session.church);
   if (!conti) return { title: "콘티", sheets: [], annotations: {} };
 
   const sheets = conti.songs
@@ -455,7 +524,7 @@ export async function listContiExport(contiId: string): Promise<{
       pageCount: Math.max(1, s.page_count),
     }));
 
-  const anns = await getAnnotations(contiId);
+  const anns = await getAnnotations(contiId, session.church);
   const annotations: Record<string, Stroke[]> = {};
   for (const a of anns) {
     if (!a.strokes?.length) continue;
@@ -563,6 +632,7 @@ export async function searchYoutubeMany(query: string): Promise<YoutubeHit[]> {
 // ─────────────────────────────────────────────
 export async function saveAnnotation(sheetId: string, page: number, strokes: Stroke[]) {
   const session = await requireSession();
+  await assertSheet(sheetId, session.church);
   const { error } = await db.from("annotation").upsert(
     {
       sheet_id: sheetId,
