@@ -8,6 +8,7 @@ import type { Annotation, Conti, SheetLayout, Stroke } from "@/lib/types";
 import type { Tool } from "./AnnotationCanvas";
 import ChordPanel from "./ChordPanel";
 import Metronome from "./Metronome";
+import OfflineButton from "./OfflineButton";
 import ReferencePanel from "./ReferencePanel";
 import SheetStage from "./SheetStage";
 
@@ -435,6 +436,10 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
         >
           {fit === "contain" ? "화면" : "폭"}
         </button>
+
+        <OfflineButton
+          urls={songs.flatMap((sg) => sg.sheets.map((sh) => sh.url).filter(Boolean) as string[])}
+        />
 
         <button
           onClick={() => void pullAnnotations()}
