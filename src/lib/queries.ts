@@ -102,61 +102,61 @@ export async function getFolder(
     : null;
 }
 
-/** 콘티 하나를 곡 · 악보 · 레퍼런스까지 통째로 읽어온다. */
+/**
+ * 콘티 하나를 곡 · 악보 · 레퍼런스까지 통째로 읽어온다.
+ * 곡→악보→레퍼런스를 따로 조회하면 DB 왕복이 여러 번이라 느리다.
+ * 한 번의 중첩 조회로 가져오고, 정렬은 받아온 뒤 여기서 한다.
+ */
 export async function getConti(id: string): Promise<Conti | null> {
-  const { data: conti, error } = await db.from("conti").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await db
+    .from("conti")
+    .select("*, song(*, sheet(*), reference(*))")
+    .eq("id", id)
+    .maybeSingle();
   if (error) throw error; // 장애 때 '없는 콘티(404)'로 오인하지 않도록
-  if (!conti) return null;
+  if (!data) return null;
 
-  const { data: songRows } = await db
-    .from("song")
-    .select("*")
-    .eq("conti_id", id)
-    .order("order_index");
+  const { song: songRows, ...conti } = data as Record<string, unknown> & {
+    song?: (Record<string, unknown> & { sheet?: Sheet[]; reference?: Reference[] })[];
+  };
 
-  const songs = songRows ?? [];
-  const songIds = songs.map((s) => s.id as string);
+  const byOrder = (a: Record<string, unknown>, b: Record<string, unknown>) =>
+    ((a.order_index as number) ?? 0) - ((b.order_index as number) ?? 0);
 
-  const [{ data: sheetRows }, { data: refRows }] = await Promise.all([
-    songIds.length
-      ? db.from("sheet").select("*").in("song_id", songIds).order("order_index")
-      : Promise.resolve({ data: [] as Sheet[] }),
-    songIds.length
-      ? db.from("reference").select("*").in("song_id", songIds).order("order_index")
-      : Promise.resolve({ data: [] as Reference[] }),
-  ]);
+  const rows = [...(songRows ?? [])].sort(byOrder);
 
-  // 악보마다 열람용 임시 URL 을 붙인다
-  const sheets: Sheet[] = await Promise.all(
-    (sheetRows ?? []).map(async (s: Sheet) => ({ ...s, url: await signSheetUrlCached(s.storage_path) }))
-  );
+  // 악보 열람용 임시 URL (경로별로 캐시되어 있어 대부분 즉시 반환된다)
+  const allSheets = rows.flatMap((s) => s.sheet ?? []);
+  const urls = await Promise.all(allSheets.map((s) => signSheetUrlCached(s.storage_path)));
+  const urlByPath = new Map(allSheets.map((s, i) => [s.storage_path, urls[i]]));
 
   return {
     ...(conti as Omit<Conti, "songs">),
-    songs: songs.map(
-      (s): Song => ({
-        ...(s as Omit<Song, "sheets" | "references">),
-        sheets: sheets.filter((sheet) => sheet.song_id === s.id),
-        references: (refRows ?? []).filter((r: Reference) => r.song_id === s.id),
-      })
-    ),
+    songs: rows.map((s): Song => {
+      const { sheet, reference, ...song } = s;
+      return {
+        ...(song as Omit<Song, "sheets" | "references">),
+        sheets: [...(sheet ?? [])]
+          .sort(byOrder)
+          .map((sh) => ({ ...sh, url: urlByPath.get(sh.storage_path) ?? "" })),
+        references: [...(reference ?? [])].sort(byOrder),
+      };
+    }),
   };
 }
 
-/** 콘티에 속한 모든 악보의 손글씨 메모 */
+/** 콘티에 속한 모든 악보의 손글씨 메모 — 한 번의 조회로 가져온다. */
 export async function getAnnotations(contiId: string): Promise<Annotation[]> {
-  const { data: songs } = await db.from("song").select("id").eq("conti_id", contiId);
-  const songIds = (songs ?? []).map((s) => s.id as string);
-  if (!songIds.length) return [];
-
-  const { data: sheets } = await db.from("sheet").select("id").in("song_id", songIds);
-  const sheetIds = (sheets ?? []).map((s) => s.id as string);
-  if (!sheetIds.length) return [];
-
-  const { data } = await db
+  const { data, error } = await db
     .from("annotation")
-    .select("sheet_id, page, author, strokes")
-    .in("sheet_id", sheetIds);
+    .select("sheet_id, page, author, strokes, sheet!inner(song!inner(conti_id))")
+    .eq("sheet.song.conti_id", contiId);
+  if (error) throw error;
 
-  return (data ?? []) as Annotation[];
+  return (data ?? []).map((a: Record<string, unknown>) => ({
+    sheet_id: a.sheet_id as string,
+    page: a.page as number,
+    author: a.author as string,
+    strokes: (a.strokes ?? []) as Annotation["strokes"],
+  }));
 }
