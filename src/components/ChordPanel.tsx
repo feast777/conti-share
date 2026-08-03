@@ -58,17 +58,18 @@ export default function ChordPanel({ sheets }: { sheets: SheetLite[] }) {
             setPicked(null);
           }}
           placeholder="코드 입력 (예: D#m7(b5), G#7(#11), C#m7/B)"
-          className="min-w-0 flex-1 text-sm"
+          className="w-full text-sm"
         />
-        <button
-          onClick={scan}
-          disabled={busy}
-          className="shrink-0 rounded-lg border border-ink-700 px-3 text-xs text-ink-400 transition hover:text-ink-200 disabled:opacity-50"
-          title="이 곡 악보에서 코드 기호를 찾아 목록으로 만듭니다"
-        >
-          {busy ? "찾는 중…" : "악보에서 찾기"}
-        </button>
       </div>
+
+      {/* 악보에서 코드 가져오기 — 누르면 이 곡 악보의 코드를 목록으로 만든다 */}
+      <button
+        onClick={scan}
+        disabled={busy}
+        className="flex w-full items-center justify-center gap-1.5 rounded-[0.625rem] bg-accent px-4 py-2.5 text-sm font-medium text-on-accent transition hover:opacity-90 disabled:opacity-60"
+      >
+        {busy ? "악보 읽는 중…" : "악보에서 코드 가져오기"}
+      </button>
 
       {/* 악보에서 찾은 코드 */}
       {found && (
@@ -97,8 +98,8 @@ export default function ChordPanel({ sheets }: { sheets: SheetLite[] }) {
         </div>
       )}
 
-      {/* 자주 쓰는 코드 */}
-      {!found && !showing && (
+      {/* 자주 쓰는 코드 — 악보에서 못 찾았을 때도 계속 쓸 수 있게 둔다 */}
+      {(!found || found.length === 0) && (
         <div>
           <p className="mb-1.5 text-xs text-ink-600">자주 쓰는 코드</p>
           <div className="flex flex-wrap gap-1.5">

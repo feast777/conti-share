@@ -183,15 +183,19 @@ export function parseChord(raw: string): ChordInfo | null {
 
 /** 텍스트에서 코드처럼 보이는 토큰만 뽑는다 (악보 OCR 결과 정리용) */
 export function extractChords(text: string): string[] {
-  const tokens = text.split(/[\s |]+/).filter(Boolean);
+  // OCR 은 글자를 붙이거나 띄우므로 띄어쓰기에 기대지 않고
+  // 코드 모양의 조각을 찾아 parseChord 로 한 번 더 검사한다.
+  const re =
+    /([A-G])\s?([#b\u266f\u266d])?\s?((?:maj|Maj|M|min|m|dim|aug|sus|add|\u00b0|\u00f8|\u25b3|\+)?\s?\d{0,2}(?:\s?\([^)]{1,6}\))?(?:\s?[#b\u266f\u266d]\d{1,2})?)(\s?\/\s?[A-G][#b\u266f\u266d]?)?/g;
+
   const out: string[] = [];
   const seen = new Set<string>();
-  for (const t of tokens) {
-    // 코드 표기에 쓰이는 글자(m, maj, sus, add, dim …)를 지우면 안 되므로
-    // 영문·숫자·기호만 남기고 나머지(한글 등)를 버린 뒤 parseChord 로 판정한다
-    const clean = t.replace(/[^A-Za-z0-9#b♯♭()/+\-△°ø]/g, "");
-    if (clean.length < 1 || clean.length > 12) continue;
-    const info = parseChord(clean);
+
+  for (const m of text.matchAll(re)) {
+    const candidate = m[0].replace(/\s+/g, "").replace(/\u266f/g, "#").replace(/\u266d/g, "b");
+    // 루트 한 글자만 잡힌 건 가사 속 알파벳일 수 있어 제외
+    if (candidate.length < 2 || candidate.length > 12) continue;
+    const info = parseChord(candidate);
     if (!info) continue;
     const key = info.name.toUpperCase();
     if (seen.has(key)) continue;

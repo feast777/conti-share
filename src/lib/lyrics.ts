@@ -8,7 +8,9 @@ export type SheetLite = { kind: "pdf" | "image"; url?: string; page_count: numbe
 let workerPromise: Promise<import("tesseract.js").Worker> | null = null;
 async function getWorker() {
   if (!workerPromise) {
-    workerPromise = import("tesseract.js").then((m) => m.createWorker("kor"));
+    // 한국어(가사) + 영어(코드 기호 D#m7 등) 를 함께 인식한다.
+    // kor 만 쓰면 영문 코드가 엉뚱하게 읽힌다.
+    workerPromise = import("tesseract.js").then((m) => m.createWorker(["kor", "eng"]));
   }
   return workerPromise;
 }
@@ -69,7 +71,9 @@ export async function extractSheetText(sheet: SheetLite): Promise<string> {
   if (!sheet.url) return "";
   if (sheet.kind === "pdf") {
     const text = await pdfText(sheet.url, sheet.page_count);
-    if (hangulCount(text) >= 5) return text; // 글자 레이어 있음 → 그대로(정확)
+    // 글자 레이어가 있으면 그대로 쓴다(정확). 가사가 한글이 아니거나
+    // 코드만 있는 악보도 있으므로 글자 수로도 판단한다.
+    if (hangulCount(text) >= 5 || text.replace(/\s/g, "").length >= 30) return text;
     return await pdfOcr(sheet.url, sheet.page_count); // 스캔 PDF → OCR
   }
   const blob = await (await fetch(sheet.url)).blob();
