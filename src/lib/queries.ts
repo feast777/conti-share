@@ -9,6 +9,7 @@ import type {
   Reference,
   Sheet,
   Song,
+  SongHit,
 } from "./types";
 
 /**
@@ -169,4 +170,43 @@ export async function getAnnotations(contiId: string, church: string): Promise<A
     author: a.author as string,
     strokes: (a.strokes ?? []) as Annotation["strokes"],
   }));
+}
+
+/**
+ * 곡 제목으로 검색 — 우리 교회 콘티 안에서 찾는다.
+ * 같은 곡을 여러 번 불렀으면 최근 것부터 나온다.
+ */
+export async function searchSongs(church: string, query: string): Promise<SongHit[]> {
+  const q = query.trim();
+  if (!q) return [];
+
+  const { data, error } = await db
+    .from("song")
+    .select("id, title, song_key, bpm, sheet(id), conti!inner(id, title, service_date, church)")
+    .eq("conti.church", church)
+    .ilike("title", `%${q}%`)
+    .limit(100);
+  if (error) throw error;
+
+  type Row = {
+    id: string;
+    title: string;
+    song_key: string;
+    bpm: string;
+    sheet: { id: string }[] | null;
+    conti: { id: string; title: string; service_date: string };
+  };
+
+  return (data as unknown as Row[])
+    .map((r) => ({
+      song_id: r.id,
+      title: r.title,
+      song_key: r.song_key,
+      bpm: r.bpm,
+      sheet_count: r.sheet?.length ?? 0,
+      conti_id: r.conti.id,
+      conti_title: r.conti.title,
+      service_date: r.conti.service_date,
+    }))
+    .sort((a, b) => b.service_date.localeCompare(a.service_date));
 }

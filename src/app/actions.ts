@@ -4,7 +4,7 @@ import { revalidatePath, unstable_cache } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSession, destroySession, findChurchByPassword, requireSession } from "@/lib/auth";
 import { SHEET_BUCKET, db } from "@/lib/db";
-import { getAnnotations, getConti } from "@/lib/queries";
+import { getAnnotations, getConti, searchSongs } from "@/lib/queries";
 import type { SheetKind, SheetLayout, Stroke, YoutubeHit } from "@/lib/types";
 
 // ─────────────────────────────────────────────
@@ -203,6 +203,77 @@ export async function duplicateConti(id: string) {
 
   revalidatePath("/");
   redirect(`/conti/${newConti.id}/edit`);
+}
+
+// ─────────────────────────────────────────────
+// 곡 검색 · 재사용
+// ─────────────────────────────────────────────
+/** 곡 제목으로 지난 콘티를 뒤진다 */
+export async function findSongs(query: string) {
+  const session = await requireSession();
+  return searchSongs(session.church, query);
+}
+
+/** 지난 곡을 다른 콘티로 복사한다 (악보·레퍼런스·가사까지 그대로). */
+export async function copySongTo(songId: string, targetContiId: string) {
+  const session = await requireSession();
+  await assertSong(songId, session.church);
+  await assertConti(targetContiId, session.church);
+
+  const { data: src } = await db.from("song").select("*").eq("id", songId).single();
+  if (!src) throw new Error("곡을 찾을 수 없습니다.");
+
+  const { count } = await db
+    .from("song")
+    .select("id", { count: "exact", head: true })
+    .eq("conti_id", targetContiId);
+
+  const { data: newSong, error } = await db
+    .from("song")
+    .insert({
+      conti_id: targetContiId,
+      order_index: count ?? 0,
+      title: src.title,
+      song_key: src.song_key,
+      bpm: src.bpm,
+      memo: src.memo,
+      lyrics: src.lyrics,
+      sheet_layout: src.sheet_layout,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  const [{ data: sheets }, { data: refs }] = await Promise.all([
+    db.from("sheet").select("*").eq("song_id", songId).order("order_index"),
+    db.from("reference").select("*").eq("song_id", songId).order("order_index"),
+  ]);
+
+  if (sheets?.length) {
+    await db.from("sheet").insert(
+      sheets.map((sh) => ({
+        song_id: newSong.id,
+        order_index: sh.order_index,
+        storage_path: sh.storage_path, // 파일은 그대로 재사용
+        file_name: sh.file_name,
+        kind: sh.kind,
+        page_count: sh.page_count,
+      }))
+    );
+  }
+  if (refs?.length) {
+    await db.from("reference").insert(
+      refs.map((r) => ({
+        song_id: newSong.id,
+        order_index: r.order_index,
+        url: r.url,
+        label: r.label,
+      }))
+    );
+  }
+
+  revalidatePath(`/conti/${targetContiId}/edit`);
+  revalidatePath(`/conti/${targetContiId}`);
 }
 
 // ─────────────────────────────────────────────
@@ -630,6 +701,13 @@ export async function searchYoutubeMany(query: string): Promise<YoutubeHit[]> {
 // ─────────────────────────────────────────────
 // 손글씨 메모
 // ─────────────────────────────────────────────
+/** 이 콘티의 손글씨 메모를 다시 읽어온다 (같이 보는 사람 화면 갱신용). */
+export async function refreshAnnotations(contiId: string) {
+  const session = await requireSession();
+  await assertConti(contiId, session.church);
+  return getAnnotations(contiId, session.church);
+}
+
 export async function saveAnnotation(sheetId: string, page: number, strokes: Stroke[]) {
   const session = await requireSession();
   await assertSheet(sheetId, session.church);
