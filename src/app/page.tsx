@@ -17,7 +17,7 @@ export default async function HomePage() {
     <main className="mx-auto max-w-3xl px-5 py-10 sm:py-14">
       <header className="mb-10 flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-ink-700 bg-ink-900 text-ink-200 shadow-[var(--shadow-card)]">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent text-on-accent shadow-[var(--shadow-card)]">
             <LogoMark />
           </span>
           <div className="min-w-0">
