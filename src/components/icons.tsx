@@ -9,12 +9,10 @@ const base = {
 };
 
 export function LogoMark({ className = "h-5 w-5" }: { className?: string }) {
-  // 음표(콘티)를 단순화한 심볼
+  // Worship 의 W 이자 소리 파형 — 브랜드 심볼
   return (
-    <svg viewBox="0 0 24 24" className={className} {...base} aria-hidden>
-      <path d="M9 18V6l10-2v12" />
-      <circle cx="6.5" cy="18" r="2.5" />
-      <circle cx="16.5" cy="16" r="2.5" />
+    <svg viewBox="0 0 24 24" className={className} {...base} strokeWidth={1.9} aria-hidden>
+      <path d="M3 7l3.2 10L12 9l5.8 8L21 7" />
     </svg>
   );
 }

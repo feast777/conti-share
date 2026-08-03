@@ -11,8 +11,8 @@ export default function LoginPage() {
     <main className="flex min-h-dvh items-center justify-center p-6">
       <form action={formAction} className="w-full max-w-sm space-y-5">
         <div className="space-y-3">
-          <span className="grid h-11 w-11 place-items-center rounded-xl border border-ink-700 bg-ink-900 text-ink-200 shadow-[var(--shadow-card)]">
-            <LogoMark className="h-[1.35rem] w-[1.35rem]" />
+          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-accent text-on-accent shadow-[var(--shadow-card)]">
+            <LogoMark className="h-6 w-6" />
           </span>
           <div className="space-y-1">
             <h1 className="text-[1.6rem] font-semibold leading-tight tracking-tight text-ink-200">
