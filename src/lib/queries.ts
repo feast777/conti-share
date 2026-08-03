@@ -30,11 +30,13 @@ const signSheetUrlCached = unstable_cache(
  * - folderId === "<id>": 그 폴더의 콘티만
  */
 export async function listContis(
+  church: string,
   folderId: string | null | "all" = "all"
 ): Promise<ContiSummary[]> {
   let q = db
     .from("conti")
     .select("id, title, service_date, created_by, folder_id, song(count)")
+    .eq("church", church)
     .order("service_date", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -56,10 +58,14 @@ export async function listContis(
 
 /** 모든 폴더 (각 폴더의 콘티 개수 · 하위 폴더 개수 · 상위 폴더 포함).
  *  화면에서는 이 목록을 부모별로 걸러서 쓴다. */
-export async function listAllFolders(): Promise<FolderSummary[]> {
+export async function listAllFolders(church: string): Promise<FolderSummary[]> {
   const [{ data: folders, error: fErr }, { data: contis, error: cErr }] = await Promise.all([
-    db.from("folder").select("id, name, parent_id, order_index, created_at").order("name"),
-    db.from("conti").select("folder_id"),
+    db
+      .from("folder")
+      .select("id, name, parent_id, order_index, created_at")
+      .eq("church", church)
+      .order("name"),
+    db.from("conti").select("folder_id").eq("church", church),
   ]);
   // 에러를 삼키면 폴더가 '사라진 것처럼' 빈 목록이 되므로, 오류는 그대로 던진다
   if (fErr) throw fErr;
@@ -89,12 +95,14 @@ export async function listAllFolders(): Promise<FolderSummary[]> {
 
 /** 폴더 하나 */
 export async function getFolder(
-  id: string
+  id: string,
+  church: string
 ): Promise<{ id: string; name: string; parent_id: string | null } | null> {
   const { data, error } = await db
     .from("folder")
     .select("id, name, parent_id")
     .eq("id", id)
+    .eq("church", church)
     .maybeSingle();
   if (error) throw error; // 장애 때 '없는 폴더'로 오인하지 않도록
   return data
@@ -107,11 +115,12 @@ export async function getFolder(
  * 곡→악보→레퍼런스를 따로 조회하면 DB 왕복이 여러 번이라 느리다.
  * 한 번의 중첩 조회로 가져오고, 정렬은 받아온 뒤 여기서 한다.
  */
-export async function getConti(id: string): Promise<Conti | null> {
+export async function getConti(id: string, church: string): Promise<Conti | null> {
   const { data, error } = await db
     .from("conti")
     .select("*, song(*, sheet(*), reference(*))")
     .eq("id", id)
+    .eq("church", church)
     .maybeSingle();
   if (error) throw error; // 장애 때 '없는 콘티(404)'로 오인하지 않도록
   if (!data) return null;
@@ -146,11 +155,12 @@ export async function getConti(id: string): Promise<Conti | null> {
 }
 
 /** 콘티에 속한 모든 악보의 손글씨 메모 — 한 번의 조회로 가져온다. */
-export async function getAnnotations(contiId: string): Promise<Annotation[]> {
+export async function getAnnotations(contiId: string, church: string): Promise<Annotation[]> {
   const { data, error } = await db
     .from("annotation")
-    .select("sheet_id, page, author, strokes, sheet!inner(song!inner(conti_id))")
-    .eq("sheet.song.conti_id", contiId);
+    .select("sheet_id, page, author, strokes, sheet!inner(song!inner(conti_id, conti!inner(church)))")
+    .eq("sheet.song.conti_id", contiId)
+    .eq("sheet.song.conti.church", church);
   if (error) throw error;
 
   return (data ?? []).map((a: Record<string, unknown>) => ({

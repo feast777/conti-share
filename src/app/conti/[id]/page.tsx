@@ -9,7 +9,7 @@ export default async function ContiPage({ params }: { params: Promise<{ id: stri
   const { id } = await params;
   const session = await requireSession();
 
-  const [conti, annotations] = await Promise.all([getConti(id), getAnnotations(id)]);
+  const [conti, annotations] = await Promise.all([getConti(id, session.church), getAnnotations(id, session.church)]);
   if (!conti) notFound();
 
   return <ContiViewer conti={conti} annotations={annotations} me={session.name} />;
