@@ -7,6 +7,7 @@ import { getPdfDocument } from "@/lib/pdf";
 import type { Annotation, Conti, SheetLayout, Stroke } from "@/lib/types";
 import type { Tool } from "./AnnotationCanvas";
 import ChordPanel from "./ChordPanel";
+import Metronome from "./Metronome";
 import ReferencePanel from "./ReferencePanel";
 import SheetStage from "./SheetStage";
 
@@ -41,7 +42,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
   // 하단 패널 높이(px). 0 이면 접힌 상태. 손잡이를 끌어 악보 ↔ 유튜브 분할을 조절한다.
   const [panelH, setPanelH] = useState(300);
   const lastPanelH = useRef(300);
-  const [panelTab, setPanelTab] = useState<"ref" | "memo" | "chord">("ref");
+  const [panelTab, setPanelTab] = useState<"ref" | "memo" | "chord" | "beat">("ref");
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
 
@@ -730,6 +731,17 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
           >
             코드
           </button>
+          <button
+            onClick={() => {
+              setPanelTab("beat");
+              openPanel();
+            }}
+            className={`rounded-md px-3 py-1 text-xs ${
+              panelH > 0 && panelTab === "beat" ? "bg-ink-800 text-ink-200" : "text-ink-400"
+            }`}
+          >
+            박자
+          </button>
           <div className="flex-1" />
           <button
             onClick={togglePanel}
@@ -751,6 +763,11 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
           {panelTab === "memo" && (
             <div className="absolute inset-0 bg-ink-950">
               <SongMemo song={song} contiId={conti.id} />
+            </div>
+          )}
+          {panelTab === "beat" && (
+            <div className="absolute inset-0 bg-ink-950">
+              <Metronome bpm={song.bpm} />
             </div>
           )}
           {panelTab === "chord" && (
