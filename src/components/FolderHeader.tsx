@@ -17,7 +17,7 @@ export default function FolderHeader({
     <header className="mb-4 flex items-center gap-2">
       <Link
         href={parentId ? `/folder/${parentId}` : "/"}
-        className="text-lg text-ink-400 hover:text-white"
+        className="text-lg text-ink-400 hover:text-ink-200"
         aria-label="위로"
       >
         ‹

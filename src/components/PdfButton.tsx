@@ -163,13 +163,13 @@ export default function PdfButton({ contiId, title }: { contiId: string; title: 
           href={state.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-lg border border-ink-700 px-3 py-1.5 text-xs text-ink-200 transition hover:border-ink-500 hover:text-white"
+          className="rounded-lg border border-ink-700 px-3 py-1.5 text-xs text-ink-200 transition hover:border-ink-500 hover:text-ink-200"
         >
           보기
         </a>
         <button
           onClick={() => share(state.blob, state.fileName, state.url)}
-          className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-ink-950"
+          className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-on-accent"
         >
           공유하기
         </button>
@@ -183,7 +183,7 @@ export default function PdfButton({ contiId, title }: { contiId: string; title: 
         stop(e);
         void build();
       }}
-      className="shrink-0 rounded-lg border border-ink-700 px-3 py-1.5 text-xs text-ink-400 transition hover:border-ink-500 hover:text-white"
+      className="shrink-0 rounded-lg border border-ink-700 px-3 py-1.5 text-xs text-ink-400 transition hover:border-ink-500 hover:text-ink-200"
       title="이 콘티의 악보 전체를 PDF 로 저장"
     >
       {state.phase === "error" ? "다시" : "PDF"}

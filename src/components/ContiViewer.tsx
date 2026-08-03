@@ -354,7 +354,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
           <p className="text-ink-400">아직 곡이 없습니다.</p>
           <Link
             href={`/conti/${conti.id}/edit`}
-            className="inline-block rounded-lg bg-accent px-4 py-2 font-medium text-ink-950"
+            className="inline-block rounded-lg bg-accent px-4 py-2 font-medium text-on-accent"
           >
             곡 추가하기
           </Link>
@@ -369,14 +369,14 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
       <header className="flex shrink-0 items-center gap-2 border-b border-ink-800 px-2 py-1.5">
         <Link
           href="/"
-          className="rounded-md px-2 py-1 text-lg text-ink-400 hover:bg-ink-800 hover:text-white"
+          className="rounded-md px-2 py-1 text-lg text-ink-400 hover:bg-ink-800 hover:text-ink-200"
           aria-label="콘티 목록"
         >
           ‹
         </Link>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-white">
+          <p className="truncate text-sm font-medium text-ink-200">
             <span className="mr-1.5 text-ink-600">{songIndex + 1}.</span>
             {song.title}
           </p>
@@ -397,7 +397,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
 
         <button
           onClick={() => setFit((f) => (f === "contain" ? "width" : "contain"))}
-          className="rounded-md border border-ink-700 px-2 py-1 text-xs text-ink-400 hover:text-white"
+          className="rounded-md border border-ink-700 px-2 py-1 text-xs text-ink-400 hover:text-ink-200"
           title="화면맞춤 / 폭맞춤"
         >
           {fit === "contain" ? "화면" : "폭"}
@@ -406,7 +406,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
         <button
           onClick={() => setPedalTest((v) => !v)}
           className={`rounded-md border px-2 py-1 text-xs transition ${
-            pedalTest ? "border-accent text-accent" : "border-ink-700 text-ink-400 hover:text-white"
+            pedalTest ? "border-accent text-accent" : "border-ink-700 text-ink-400 hover:text-ink-200"
           }`}
           title="페이지터너 페달이 보내는 키 확인"
         >
@@ -416,7 +416,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
         <button
           onClick={() => setAnnotating((a) => !a)}
           className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-            annotating ? "bg-accent text-ink-950" : "border border-ink-700 text-ink-400"
+            annotating ? "bg-accent text-on-accent" : "border border-ink-700 text-ink-400"
           }`}
         >
           ✎ 메모
@@ -424,7 +424,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
 
         <Link
           href={`/conti/${conti.id}/edit`}
-          className="rounded-md border border-ink-700 px-2 py-1.5 text-xs text-ink-400 hover:text-white"
+          className="rounded-md border border-ink-700 px-2 py-1.5 text-xs text-ink-400 hover:text-ink-200"
         >
           편집
         </Link>
@@ -441,8 +441,8 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
             onClick={() => selectSong(i)}
             className={`shrink-0 rounded-md px-2.5 py-1 text-xs transition ${
               i === songIndex
-                ? "bg-accent-soft text-white"
-                : "text-ink-400 hover:bg-ink-800 hover:text-white"
+                ? "bg-accent-soft text-accent"
+                : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
             }`}
           >
             {i + 1}. {s.title}
@@ -452,7 +452,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
 
       {/* 악보 */}
       <div
-        className="relative min-h-0 flex-1 bg-ink-900"
+        className="relative min-h-0 flex-1 bg-ink-800"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
@@ -519,21 +519,21 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
               className="group absolute left-0 top-0 h-full w-[12%] cursor-pointer"
               aria-label="이전"
             >
-              <span className="pl-1 text-2xl text-white/0 transition group-hover:text-white/40">‹</span>
+              <span className="pl-1 text-2xl text-ink-200/0 transition group-hover:text-ink-200/40">‹</span>
             </button>
             <button
               onClick={next}
               className="group absolute right-0 top-0 h-full w-[12%] cursor-pointer"
               aria-label="다음"
             >
-              <span className="pr-1 text-2xl text-white/0 transition group-hover:text-white/40">›</span>
+              <span className="pr-1 text-2xl text-ink-200/0 transition group-hover:text-ink-200/40">›</span>
             </button>
           </>
         )}
 
         {/* 페이지 표시 — 한 장씩이면 "현재/전체", 여러 장 배치면 "N장" */}
         {pages.length > 0 && (
-          <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs text-ink-200">
+          <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs text-white">
             {isMulti ? `${pages.length}장` : `${pageIndex + 1} / ${pages.length}`}
             {otherAuthors.length > 0 && showOthers && (
               <span className="ml-2 text-ink-400">· {otherAuthors.join(", ")} 메모</span>
@@ -544,7 +544,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
         {/* 페달 확인 — 켜면 마지막으로 눌린 키를 보여준다 */}
         {pedalTest && (
           <div className="pointer-events-none absolute inset-x-0 bottom-10 flex justify-center px-4">
-            <div className="max-w-full rounded-lg bg-black/80 px-3 py-1.5 text-center text-xs text-ink-100">
+            <div className="max-w-full rounded-lg bg-black/80 px-3 py-1.5 text-center text-xs text-white">
               페달/키를 눌러보세요 → <span className="font-mono text-accent">{lastKey || "…"}</span>
             </div>
           </div>
@@ -658,7 +658,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
               openPanel();
             }}
             className={`rounded-md px-3 py-1 text-xs ${
-              panelH > 0 && panelTab === "ref" ? "bg-ink-800 text-white" : "text-ink-400"
+              panelH > 0 && panelTab === "ref" ? "bg-ink-800 text-ink-200" : "text-ink-400"
             }`}
           >
             레퍼런스 {song.references.length > 0 && `(${song.references.length})`}
@@ -669,7 +669,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
               openPanel();
             }}
             className={`rounded-md px-3 py-1 text-xs ${
-              panelH > 0 && panelTab === "memo" ? "bg-ink-800 text-white" : "text-ink-400"
+              panelH > 0 && panelTab === "memo" ? "bg-ink-800 text-ink-200" : "text-ink-400"
             }`}
           >
             곡 메모
@@ -677,7 +677,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
           <div className="flex-1" />
           <button
             onClick={togglePanel}
-            className="rounded-md px-2 py-1 text-xs text-ink-400 hover:text-white"
+            className="rounded-md px-2 py-1 text-xs text-ink-400 hover:text-ink-200"
           >
             {panelH > 0 ? "▾ 접기" : "▴ 펼치기"}
           </button>

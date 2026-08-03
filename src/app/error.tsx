@@ -8,7 +8,7 @@ export default function Error({ reset }: { error: Error; reset: () => void }) {
       <div className="space-y-4">
         <p className="text-2xl">😥</p>
         <div className="space-y-1">
-          <p className="font-medium text-white">잠시 불러오지 못했어요</p>
+          <p className="font-medium text-ink-200">잠시 불러오지 못했어요</p>
           <p className="text-sm text-ink-400">
             연결이 일시적으로 불안정할 수 있어요. 데이터는 그대로 있으니 다시 시도해 주세요.
           </p>
@@ -16,13 +16,13 @@ export default function Error({ reset }: { error: Error; reset: () => void }) {
         <div className="flex justify-center gap-2">
           <button
             onClick={reset}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-ink-950"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent"
           >
             다시 시도
           </button>
           <button
             onClick={() => location.reload()}
-            className="rounded-lg border border-ink-700 px-4 py-2 text-sm text-ink-400 hover:text-white"
+            className="rounded-lg border border-ink-700 px-4 py-2 text-sm text-ink-400 hover:text-ink-200"
           >
             새로고침
           </button>

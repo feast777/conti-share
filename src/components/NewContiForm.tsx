@@ -16,7 +16,7 @@ export default function NewContiForm({ folderId }: { folderId?: string }) {
         required
       />
       <input name="service_date" type="date" defaultValue={today} className="sm:w-44" />
-      <button className="rounded-lg bg-accent px-4 py-2 font-medium text-ink-950">새 콘티</button>
+      <button className="rounded-lg bg-accent px-4 py-2 font-medium text-on-accent">새 콘티</button>
     </form>
   );
 }

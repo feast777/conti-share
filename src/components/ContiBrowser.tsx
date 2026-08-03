@@ -219,14 +219,14 @@ export default function ContiBrowser({ currentFolderId, path, subfolders, contis
       <DragOverlay>
         {activeConti ? (
           <div className="rounded-xl border border-accent bg-ink-800 px-4 py-3 shadow-2xl">
-            <p className="truncate font-medium text-white">{activeConti.title}</p>
+            <p className="truncate font-medium text-ink-200">{activeConti.title}</p>
             <p className="mt-0.5 text-xs text-ink-400">
               {formatDate(activeConti.service_date)} · {activeConti.song_count}곡
             </p>
           </div>
         ) : activeFolder ? (
           <div className="rounded-xl border border-accent bg-ink-800 px-4 py-3 shadow-2xl">
-            <span className="text-sm font-medium text-white">📁 {activeFolder.name}</span>
+            <span className="text-sm font-medium text-ink-200">📁 {activeFolder.name}</span>
           </div>
         ) : null}
       </DragOverlay>
@@ -257,7 +257,7 @@ function Crumb({ dropId, href, label }: { dropId: string; href: string; label: s
       ref={setNodeRef}
       href={href}
       className={`rounded px-1.5 py-0.5 transition ${
-        isOver ? "bg-accent-soft text-white" : "hover:text-white"
+        isOver ? "bg-accent-soft text-accent" : "hover:text-ink-200"
       }`}
     >
       {label}
@@ -303,7 +303,7 @@ function FolderCard({
               reorder.onLeft();
             }}
             disabled={!reorder.canLeft}
-            className="rounded px-1 text-base text-ink-500 hover:text-white disabled:opacity-30"
+            className="rounded px-1 text-base text-ink-500 hover:text-ink-200 disabled:opacity-30"
             aria-label="앞으로"
           >
             ◀
@@ -315,7 +315,7 @@ function FolderCard({
               reorder.onRight();
             }}
             disabled={!reorder.canRight}
-            className="rounded px-1 text-base text-ink-500 hover:text-white disabled:opacity-30"
+            className="rounded px-1 text-base text-ink-500 hover:text-ink-200 disabled:opacity-30"
             aria-label="뒤로"
           >
             ▶
@@ -324,7 +324,7 @@ function FolderCard({
       )}
       <Link href={`/folder/${folder.id}`} draggable={false} className="flex flex-col">
         <span className="text-lg">📁</span>
-        <span className="mt-1 truncate pr-10 text-sm font-medium text-white">{folder.name}</span>
+        <span className="mt-1 truncate pr-10 text-sm font-medium text-ink-200">{folder.name}</span>
         <span className="text-xs text-ink-600">
           {folder.conti_count}개{folder.subfolder_count > 0 && ` · 폴더 ${folder.subfolder_count}`}
         </span>
@@ -353,7 +353,7 @@ function NewFolder({
       />
       <button
         onClick={onAdd}
-        className="rounded-md bg-accent px-2 py-1 text-xs font-medium text-ink-950"
+        className="rounded-md bg-accent px-2 py-1 text-xs font-medium text-on-accent"
       >
         ＋ 폴더 만들기
       </button>
@@ -377,7 +377,7 @@ function ContiCard({ conti, dimmed }: { conti: ContiSummary; dimmed: boolean }) 
         ref={setActivatorNodeRef}
         {...listeners}
         {...attributes}
-        className="shrink-0 cursor-grab touch-none px-2 py-5 text-ink-500 hover:text-white active:cursor-grabbing"
+        className="shrink-0 cursor-grab touch-none px-2 py-5 text-ink-500 hover:text-ink-200 active:cursor-grabbing"
         title="끌어서 폴더로 이동"
         aria-label={`${conti.title} 폴더로 이동`}
       >
@@ -385,7 +385,7 @@ function ContiCard({ conti, dimmed }: { conti: ContiSummary; dimmed: boolean }) 
       </button>
       <Link href={`/conti/${conti.id}`} className="flex min-w-0 flex-1 items-center py-4">
         <div className="min-w-0 flex-1">
-          <p className="truncate font-medium text-white">{conti.title}</p>
+          <p className="truncate font-medium text-ink-200">{conti.title}</p>
           <p className="mt-0.5 text-sm text-ink-400">
             {formatDate(conti.service_date)} · {conti.song_count}곡
             {conti.created_by && ` · ${conti.created_by}`}
@@ -396,7 +396,7 @@ function ContiCard({ conti, dimmed }: { conti: ContiSummary; dimmed: boolean }) 
         onClick={() => {
           if (confirm(`"${conti.title}" 콘티를 복사할까요?`)) void duplicateConti(conti.id);
         }}
-        className="shrink-0 px-1.5 text-ink-500 hover:text-white"
+        className="shrink-0 px-1.5 text-ink-500 hover:text-ink-200"
         title="이 콘티 복사"
         aria-label={`${conti.title} 복사`}
       >

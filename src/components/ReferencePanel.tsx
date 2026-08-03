@@ -120,8 +120,8 @@ export default function ReferencePanel({
               onClick={() => pickInstrument(it.label)}
               className={`flex items-center justify-center gap-1 rounded-md border px-3 py-2 text-xs transition ${
                 openInst === it.label
-                  ? "border-accent text-white"
-                  : "border-ink-700 text-ink-400 hover:border-ink-500 hover:text-white"
+                  ? "border-accent text-ink-200"
+                  : "border-ink-700 text-ink-400 hover:border-ink-500 hover:text-ink-200"
               }`}
             >
               <span>{it.icon}</span>
