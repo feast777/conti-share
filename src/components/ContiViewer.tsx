@@ -6,6 +6,7 @@ import { saveAnnotation, updateSong } from "@/app/actions";
 import { getPdfDocument } from "@/lib/pdf";
 import type { Annotation, Conti, SheetLayout, Stroke } from "@/lib/types";
 import type { Tool } from "./AnnotationCanvas";
+import ChordPanel from "./ChordPanel";
 import ReferencePanel from "./ReferencePanel";
 import SheetStage from "./SheetStage";
 
@@ -40,7 +41,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
   // 하단 패널 높이(px). 0 이면 접힌 상태. 손잡이를 끌어 악보 ↔ 유튜브 분할을 조절한다.
   const [panelH, setPanelH] = useState(300);
   const lastPanelH = useRef(300);
-  const [panelTab, setPanelTab] = useState<"ref" | "memo">("ref");
+  const [panelTab, setPanelTab] = useState<"ref" | "memo" | "chord">("ref");
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
 
@@ -674,6 +675,17 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
           >
             곡 메모
           </button>
+          <button
+            onClick={() => {
+              setPanelTab("chord");
+              openPanel();
+            }}
+            className={`rounded-md px-3 py-1 text-xs ${
+              panelH > 0 && panelTab === "chord" ? "bg-ink-800 text-ink-200" : "text-ink-400"
+            }`}
+          >
+            코드
+          </button>
           <div className="flex-1" />
           <button
             onClick={togglePanel}
@@ -695,6 +707,17 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
           {panelTab === "memo" && (
             <div className="absolute inset-0 bg-ink-950">
               <SongMemo song={song} contiId={conti.id} />
+            </div>
+          )}
+          {panelTab === "chord" && (
+            <div className="absolute inset-0 bg-ink-950">
+              <ChordPanel
+                sheets={song.sheets.map((sh) => ({
+                  kind: sh.kind,
+                  url: sh.url,
+                  page_count: sh.page_count,
+                }))}
+              />
             </div>
           )}
         </div>
