@@ -3,19 +3,18 @@
  * 예배당 인터넷이 끊겨도 미리 받아둔 악보를 볼 수 있게 한다.
  *
  * - 악보 파일(Supabase storage): 한 번 받은 건 캐시에 두고, 다음엔 캐시를 먼저 쓴다
- * - 앱 화면(HTML/RSC): 네트워크를 먼저 쓰되 끊기면 캐시로 보여준다
+ * - 앱 화면(HTML/RSC): 캐시하지 않는다 (이전 버전 화면이 나오면 오류가 나므로)
  * - 그 외(스크립트·폰트): 캐시 우선
  */
-const SHEET_CACHE = "sheets-v1";
-const PAGE_CACHE = "pages-v1";
-const ASSET_CACHE = "assets-v1";
+const SHEET_CACHE = "sheets-v2";
+const ASSET_CACHE = "assets-v2";
 
 self.addEventListener("install", () => self.skipWaiting());
 
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     (async () => {
-      const keep = [SHEET_CACHE, PAGE_CACHE, ASSET_CACHE];
+      const keep = [SHEET_CACHE, ASSET_CACHE];
       for (const k of await caches.keys()) if (!keep.includes(k)) await caches.delete(k);
       await self.clients.claim();
     })()
@@ -60,25 +59,10 @@ self.addEventListener("fetch", (e) => {
   // 우리 사이트가 아니면 그대로 둔다 (유튜브 등)
   if (url.origin !== self.location.origin) return;
 
-  // 2) 화면(HTML·데이터) — 네트워크 먼저, 끊기면 캐시
-  const isPage = req.mode === "navigate" || req.headers.get("RSC") === "1";
-  if (isPage) {
-    e.respondWith(
-      (async () => {
-        const cache = await caches.open(PAGE_CACHE);
-        try {
-          const res = await fetch(req);
-          if (res.ok) cache.put(req, res.clone());
-          return res;
-        } catch (err) {
-          const hit = await cache.match(req);
-          if (hit) return hit;
-          throw err;
-        }
-      })()
-    );
-    return;
-  }
+  // 2) 화면(HTML·RSC)은 건드리지 않는다.
+  //    캐시해두면 네트워크가 잠깐 끊길 때 이전 버전 화면이 나와
+  //    지금 앱과 맞지 않아 오류 화면이 뜬다. 항상 서버에서 받는다.
+  if (req.mode === "navigate" || req.headers.get("RSC") === "1") return;
 
   // 3) 스크립트·폰트 등 — 캐시 먼저
   if (url.pathname.startsWith("/_next/") || url.pathname.endsWith(".mjs")) {
