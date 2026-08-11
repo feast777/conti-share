@@ -24,6 +24,24 @@ const signSheetUrlCached = unstable_cache(
   { revalidate: 60 * 60 * 6 } // 6시간 동안 같은 URL 재사용
 );
 
+
+/**
+ * DB 가 잠깐 응답을 놓치는 경우(콜드 스타트·순간 네트워크 지연)가 있어
+ * 곧바로 오류 화면을 띄우지 않고 짧게 두 번 더 시도한다.
+ */
+async function withRetry<T>(fn: () => Promise<T>, tries = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (i < tries - 1) await new Promise((r) => setTimeout(r, 150 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 /**
  * 콘티 목록.
  * - folderId === "all": 전체
@@ -44,7 +62,7 @@ export async function listContis(
   if (folderId === null) q = q.is("folder_id", null);
   else if (folderId !== "all") q = q.eq("folder_id", folderId);
 
-  const { data, error } = await q;
+  const { data, error } = await withRetry(() => Promise.resolve(q));
   if (error) throw error;
 
   return (data ?? []).map((row: Record<string, unknown>) => ({
@@ -60,14 +78,16 @@ export async function listContis(
 /** 모든 폴더 (각 폴더의 콘티 개수 · 하위 폴더 개수 · 상위 폴더 포함).
  *  화면에서는 이 목록을 부모별로 걸러서 쓴다. */
 export async function listAllFolders(church: string): Promise<FolderSummary[]> {
-  const [{ data: folders, error: fErr }, { data: contis, error: cErr }] = await Promise.all([
-    db
-      .from("folder")
-      .select("id, name, parent_id, order_index, created_at")
-      .eq("church", church)
-      .order("name"),
-    db.from("conti").select("folder_id").eq("church", church),
-  ]);
+  const [{ data: folders, error: fErr }, { data: contis, error: cErr }] = await withRetry(() =>
+    Promise.all([
+      db
+        .from("folder")
+        .select("id, name, parent_id, order_index, created_at")
+        .eq("church", church)
+        .order("name"),
+      db.from("conti").select("folder_id").eq("church", church),
+    ])
+  );
   // 에러를 삼키면 폴더가 '사라진 것처럼' 빈 목록이 되므로, 오류는 그대로 던진다
   if (fErr) throw fErr;
   if (cErr) throw cErr;
@@ -99,12 +119,11 @@ export async function getFolder(
   id: string,
   church: string
 ): Promise<{ id: string; name: string; parent_id: string | null } | null> {
-  const { data, error } = await db
-    .from("folder")
-    .select("id, name, parent_id")
-    .eq("id", id)
-    .eq("church", church)
-    .maybeSingle();
+  const { data, error } = await withRetry(() =>
+    Promise.resolve(
+      db.from("folder").select("id, name, parent_id").eq("id", id).eq("church", church).maybeSingle()
+    )
+  );
   if (error) throw error; // 장애 때 '없는 폴더'로 오인하지 않도록
   return data
     ? { id: data.id as string, name: data.name as string, parent_id: (data.parent_id as string | null) ?? null }
@@ -117,12 +136,16 @@ export async function getFolder(
  * 한 번의 중첩 조회로 가져오고, 정렬은 받아온 뒤 여기서 한다.
  */
 export async function getConti(id: string, church: string): Promise<Conti | null> {
-  const { data, error } = await db
-    .from("conti")
-    .select("*, song(*, sheet(*), reference(*))")
-    .eq("id", id)
-    .eq("church", church)
-    .maybeSingle();
+  const { data, error } = await withRetry(() =>
+    Promise.resolve(
+      db
+        .from("conti")
+        .select("*, song(*, sheet(*), reference(*))")
+        .eq("id", id)
+        .eq("church", church)
+        .maybeSingle()
+    )
+  );
   if (error) throw error; // 장애 때 '없는 콘티(404)'로 오인하지 않도록
   if (!data) return null;
 
@@ -157,11 +180,15 @@ export async function getConti(id: string, church: string): Promise<Conti | null
 
 /** 콘티에 속한 모든 악보의 손글씨 메모 — 한 번의 조회로 가져온다. */
 export async function getAnnotations(contiId: string, church: string): Promise<Annotation[]> {
-  const { data, error } = await db
-    .from("annotation")
-    .select("sheet_id, page, author, strokes, sheet!inner(song!inner(conti_id, conti!inner(church)))")
-    .eq("sheet.song.conti_id", contiId)
-    .eq("sheet.song.conti.church", church);
+  const { data, error } = await withRetry(() =>
+    Promise.resolve(
+      db
+        .from("annotation")
+        .select("sheet_id, page, author, strokes, sheet!inner(song!inner(conti_id, conti!inner(church)))")
+        .eq("sheet.song.conti_id", contiId)
+        .eq("sheet.song.conti.church", church)
+    )
+  );
   if (error) throw error;
 
   return (data ?? []).map((a: Record<string, unknown>) => ({
@@ -213,11 +240,14 @@ export async function searchSongs(church: string, query: string): Promise<SongHi
 
 /** 교회 이름 (설정 안 했으면 빈 문자열) */
 export async function getChurchName(church: string): Promise<string> {
-  const { data, error } = await db
-    .from("church_setting")
-    .select("name")
-    .eq("church", church)
-    .maybeSingle();
-  if (error) throw error;
-  return (data?.name as string) ?? "";
+  // 이름은 부가 정보라, 못 읽어도 화면은 떠야 한다
+  try {
+    const { data } = await withRetry(() =>
+      Promise.resolve(db.from("church_setting").select("name").eq("church", church).maybeSingle())
+    );
+    return (data?.name as string) ?? "";
+  } catch {
+    return "";
+  }
 }
+
