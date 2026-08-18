@@ -70,6 +70,9 @@ type Props = {
 };
 
 export default function ContiBrowser({ currentFolderId, path, subfolders, contis }: Props) {
+  // 하위 폴더를 '위로' 뺄 때의 목적지 = 지금 폴더의 상위 (없으면 홈)
+  const upTargetId = path.length ? path[path.length - 1].id : null;
+  const upTargetName = path.length ? path[path.length - 1].name : "홈";
   const router = useRouter();
   const [, startTransition] = useTransition();
   const refresh = () => startTransition(() => router.refresh());
@@ -180,6 +183,14 @@ export default function ContiBrowser({ currentFolderId, path, subfolders, contis
               key={f.id}
               folder={f}
               draggingId={active?.kind === "f" ? active.id : null}
+              up={
+                currentFolderId
+                  ? {
+                      label: upTargetName,
+                      onUp: () => void moveFolder(f.id, upTargetId).then(refresh),
+                    }
+                  : null
+              }
               reorder={
                 manual
                   ? {
@@ -284,10 +295,13 @@ function FolderCard({
   folder,
   draggingId,
   reorder,
+  up,
 }: {
   folder: FolderSummary;
   draggingId: string | null;
   reorder: Reorder | null;
+  /** 상위로 빼기 (홈에서는 없음) */
+  up: { label: string; onUp: () => void } | null;
 }) {
   const drop = useDroppable({ id: `f:${folder.id}` });
   const drag = useDraggable({ id: `f:${folder.id}` });
@@ -305,8 +319,25 @@ function FolderCard({
         drop.isOver && !dimmed ? "border-accent bg-accent-soft" : ""
       } ${dimmed ? "opacity-40" : ""}`}
     >
+      <div className="absolute right-1.5 top-1.5 flex gap-0.5">
+        {up && (
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              up.onUp();
+            }}
+            className="grid h-6 w-6 place-items-center rounded-md text-xs text-ink-600 transition hover:bg-ink-800 hover:text-ink-200"
+            title={`'${up.label}' 로 빼기`}
+            aria-label="상위 폴더로 빼기"
+          >
+            ↑
+          </button>
+        )}
+      </div>
       {reorder && (
-        <div className="absolute right-1.5 top-1.5 flex gap-0.5 opacity-0 transition group-hover:opacity-100 has-[:focus]:opacity-100 sm:opacity-0">
+        <div className="absolute left-1.5 top-1.5 flex gap-0.5">
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
