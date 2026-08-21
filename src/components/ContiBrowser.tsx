@@ -34,6 +34,7 @@ import {
   PlusIcon,
   StarIcon,
 } from "@/components/icons";
+import { folderColor, tint } from "@/lib/colors";
 import type { ContiSummary, FolderSummary } from "@/lib/types";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -324,6 +325,7 @@ function FolderCard({
     drag.setNodeRef(n);
   };
   const dimmed = draggingId === folder.id;
+  const color = folderColor(folder.id);
 
   // 버튼은 카드를 열지 않고 자기 동작만 하도록 (드래그도 시작하지 않게)
   const stop = (fn: () => void) => (e: React.MouseEvent) => {
@@ -353,7 +355,12 @@ function FolderCard({
 
       {/* 윗줄: 폴더 아이콘 · (즐겨찾기 / 위로 빼기) */}
       <div className="relative flex items-start justify-between">
-        <FolderIcon className="h-[1.15rem] w-[1.15rem] text-ink-400" />
+        <span
+          className="grid h-8 w-8 place-items-center rounded-[0.6rem]"
+          style={{ background: tint(color, 13), color }}
+        >
+          <FolderIcon className="h-[1.05rem] w-[1.05rem]" filled />
+        </span>
         <div className="relative z-20 -mr-1 -mt-1 flex items-center gap-0.5">
           <button
             onPointerDown={noDrag}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { refreshAnnotations, saveAnnotation, updateSong } from "@/app/actions";
 import { getPdfDocument } from "@/lib/pdf";
+import { tint } from "@/lib/colors";
 import type { Annotation, Conti, SheetLayout, Stroke } from "@/lib/types";
 import type { Tool } from "./AnnotationCanvas";
 import ChordPanel from "./ChordPanel";
@@ -19,6 +20,14 @@ const PEN_SIZES = [0.0022, 0.0038, 0.0065];
 const HIGHLIGHTER_SIZES = [0.018, 0.03];
 
 const key = (sheetId: string, page: number) => `${sheetId}:${page}`;
+
+/** 아래 기능 탭 — 아이콘 색으로 구분한다 */
+const PANEL_TABS = [
+  { key: "ref", label: "영상", Icon: VideoIcon, color: "#e5484d" },
+  { key: "memo", label: "메모", Icon: NoteIcon, color: "#f76b15" },
+  { key: "chord", label: "코드", Icon: ChordIcon, color: "#8e4ec6" },
+  { key: "beat", label: "Tempo", Icon: TempoIcon, color: "#12a594" },
+] as const;
 
 type Props = {
   conti: Conti;
@@ -725,66 +734,31 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
         </div>
 
         <div className="flex items-center gap-1 overflow-x-auto px-2 pb-1">
-          <button
-            onClick={() => {
-              setPanelTab("ref");
-              openPanel();
-            }}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              panelH > 0 && panelTab === "ref"
-                ? "bg-accent-soft text-accent-ink"
-                : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
-            }`}
-          >
-            <VideoIcon className="h-3.5 w-3.5" />
-            영상 {song.references.length > 0 && `(${song.references.length})`}
-          </button>
-          <button
-            onClick={() => {
-              setPanelTab("memo");
-              openPanel();
-            }}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              panelH > 0 && panelTab === "memo"
-                ? "bg-accent-soft text-accent-ink"
-                : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
-            }`}
-          >
-            <NoteIcon className="h-3.5 w-3.5" />
-            메모
-          </button>
-          <button
-            onClick={() => {
-              setPanelTab("chord");
-              openPanel();
-            }}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              panelH > 0 && panelTab === "chord"
-                ? "bg-accent-soft text-accent-ink"
-                : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
-            }`}
-          >
-            <ChordIcon className="h-3.5 w-3.5" />
-            코드
-          </button>
-          <button
-            onClick={() => {
-              setPanelTab("beat");
-              openPanel();
-            }}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              panelH > 0 && panelTab === "beat"
-                ? "bg-accent-soft text-accent-ink"
-                : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
-            }`}
-          >
-            <TempoIcon className="h-3.5 w-3.5" />
-            Tempo
-          </button>
+          {PANEL_TABS.map(({ key, label, Icon, color }) => {
+            const active = panelH > 0 && panelTab === key;
+            return (
+              <button
+                key={key}
+                onClick={() => {
+                  setPanelTab(key);
+                  openPanel();
+                }}
+                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  active ? "text-ink-200" : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
+                }`}
+                style={active ? { background: tint(color, 16) } : undefined}
+              >
+                {/* 아이콘 색은 켜져 있든 아니든 유지 — 탭을 색으로 구분한다 */}
+                <Icon className="h-3.5 w-3.5" style={{ color }} />
+                {label}
+                {key === "ref" && song.references.length > 0 && ` (${song.references.length})`}
+              </button>
+            );
+          })}
           <div className="flex-1" />
           <button
             onClick={togglePanel}
-            className="rounded-md px-2 py-1 text-xs text-ink-400 hover:text-ink-200"
+            className="shrink-0 whitespace-nowrap rounded-md px-2 py-1 text-xs text-ink-400 hover:text-ink-200"
           >
             {panelH > 0 ? "▾ 접기" : "▴ 펼치기"}
           </button>
