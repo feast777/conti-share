@@ -112,17 +112,20 @@ export async function deleteConti(id: string) {
   const { data: row } = await db.from("conti").select("folder_id").eq("id", id).maybeSingle();
   const folderId = (row?.folder_id as string | null) ?? null;
 
-  // 스토리지에 올라간 악보 파일까지 같이 지운다 (DB 는 cascade)
+  // 악보 파일 경로를 미리 모아둔다 (DB 는 cascade 로 지워진다)
   const { data: songs } = await db.from("song").select("id").eq("conti_id", id);
   const songIds = (songs ?? []).map((s) => s.id as string);
+  let paths: string[] = [];
   if (songIds.length) {
     const { data: sheets } = await db.from("sheet").select("storage_path").in("song_id", songIds);
-    const paths = (sheets ?? []).map((s) => s.storage_path as string);
-    if (paths.length) await db.storage.from(SHEET_BUCKET).remove(paths);
+    paths = (sheets ?? []).map((s) => s.storage_path as string);
   }
 
   const { error } = await db.from("conti").delete().eq("id", id);
   if (error) throw error;
+
+  // 행을 지운 뒤에 확인 — 복사본이 쓰던 파일이면 남겨둔다
+  await removeOrphanFiles(paths);
   revalidatePath("/");
   if (folderId) {
     revalidatePath(`/folder/${folderId}`);
@@ -177,18 +180,7 @@ export async function duplicateConti(id: string) {
       db.from("reference").select("*").eq("song_id", song.id).order("order_index"),
     ]);
 
-    if (sheets?.length) {
-      await db.from("sheet").insert(
-        sheets.map((s) => ({
-          song_id: newSong.id,
-          order_index: s.order_index,
-          storage_path: s.storage_path, // 파일은 공유해서 쓴다
-          file_name: s.file_name,
-          kind: s.kind,
-          page_count: s.page_count,
-        }))
-      );
-    }
+    await copySheets(sheets, newSong.id);
     if (refs?.length) {
       await db.from("reference").insert(
         refs.map((r) => ({
@@ -250,7 +242,76 @@ export async function findSongs(query: string) {
   return searchSongs(session.church, query);
 }
 
-/** 지난 곡을 다른 콘티로 복사한다 (악보·레퍼런스·가사까지 그대로). */
+/** 아무도 안 쓰는 악보 파일만 스토리지에서 지운다.
+ *  콘티·곡을 복사하면 여러 sheet 행이 같은 storage_path 를 공유하므로,
+ *  DB 행을 지운 "뒤에" 남은 참조를 확인하고 고아 파일만 삭제해야 원본이 안 깨진다. */
+async function removeOrphanFiles(paths: string[]): Promise<void> {
+  const unique = [...new Set(paths)].filter(Boolean);
+  if (!unique.length) return;
+
+  const { data: stillUsed } = await db
+    .from("sheet")
+    .select("storage_path")
+    .in("storage_path", unique);
+  const inUse = new Set((stillUsed ?? []).map((r) => r.storage_path as string));
+
+  const orphans = unique.filter((p) => !inUse.has(p));
+  if (orphans.length) await db.storage.from(SHEET_BUCKET).remove(orphans);
+}
+
+/** 악보 행을 새 곡으로 복사하면서 손글씨 메모(annotation)까지 함께 옮긴다.
+ *  파일 자체는 storage_path 를 공유해 재사용한다. */
+async function copySheets(
+  srcSheets: Record<string, unknown>[] | null,
+  newSongId: string
+): Promise<void> {
+  if (!srcSheets?.length) return;
+
+  const { data: inserted } = await db
+    .from("sheet")
+    .insert(
+      srcSheets.map((sh) => ({
+        song_id: newSongId,
+        order_index: sh.order_index,
+        storage_path: sh.storage_path, // 파일은 그대로 재사용
+        file_name: sh.file_name,
+        kind: sh.kind,
+        page_count: sh.page_count,
+      }))
+    )
+    .select("id, order_index, storage_path");
+  if (!inserted?.length) return;
+
+  // 돌아오는 순서를 믿지 않고 (자리번호 + 파일경로) 로 짝을 짓는다
+  const key = (r: Record<string, unknown>) => `${r.order_index}|${r.storage_path}`;
+  const byKey = new Map<string, string>();
+  for (const row of inserted as unknown as Record<string, unknown>[]) {
+    byKey.set(key(row), row.id as string);
+  }
+  const idMap = new Map<string, string>();
+  for (const sh of srcSheets) {
+    const next = byKey.get(key(sh));
+    if (next) idMap.set(sh.id as string, next);
+  }
+  if (!idMap.size) return;
+
+  const { data: notes } = await db
+    .from("annotation")
+    .select("sheet_id, page, author, strokes")
+    .in("sheet_id", [...idMap.keys()]);
+  if (!notes?.length) return;
+
+  await db.from("annotation").insert(
+    notes.map((n) => ({
+      sheet_id: idMap.get(n.sheet_id as string),
+      page: n.page,
+      author: n.author,
+      strokes: n.strokes,
+    }))
+  );
+}
+
+/** 지난 곡을 다른 콘티로 복사한다 (악보·손글씨 메모·레퍼런스·가사까지 그대로). */
 export async function copySongTo(songId: string, targetContiId: string) {
   const session = await requireSession();
   await assertSong(songId, session.church);
@@ -285,18 +346,7 @@ export async function copySongTo(songId: string, targetContiId: string) {
     db.from("reference").select("*").eq("song_id", songId).order("order_index"),
   ]);
 
-  if (sheets?.length) {
-    await db.from("sheet").insert(
-      sheets.map((sh) => ({
-        song_id: newSong.id,
-        order_index: sh.order_index,
-        storage_path: sh.storage_path, // 파일은 그대로 재사용
-        file_name: sh.file_name,
-        kind: sh.kind,
-        page_count: sh.page_count,
-      }))
-    );
-  }
+  await copySheets(sheets, newSong.id);
   if (refs?.length) {
     await db.from("reference").insert(
       refs.map((r) => ({
@@ -471,10 +521,12 @@ export async function deleteSong(songId: string, contiId: string) {
   await assertSong(songId, session.church);
   const { data: sheets } = await db.from("sheet").select("storage_path").eq("song_id", songId);
   const paths = (sheets ?? []).map((s) => s.storage_path as string);
-  if (paths.length) await db.storage.from(SHEET_BUCKET).remove(paths);
 
   const { error } = await db.from("song").delete().eq("id", songId);
   if (error) throw error;
+
+  // 복사본과 파일을 공유할 수 있으므로, 지운 뒤 아무도 안 쓰는 것만 삭제
+  await removeOrphanFiles(paths);
   revalidatePath(`/conti/${contiId}/edit`);
   revalidatePath(`/conti/${contiId}`);
 }
@@ -577,13 +629,7 @@ export async function deleteSheet(sheetId: string, contiId: string) {
   if (error) throw error;
 
   // 다른 콘티가 같은 파일을 참조 중이면 (콘티 복사) 파일은 남겨둔다
-  if (sheet) {
-    const { count } = await db
-      .from("sheet")
-      .select("id", { count: "exact", head: true })
-      .eq("storage_path", sheet.storage_path);
-    if (!count) await db.storage.from(SHEET_BUCKET).remove([sheet.storage_path]);
-  }
+  if (sheet) await removeOrphanFiles([sheet.storage_path as string]);
 
   revalidatePath(`/conti/${contiId}/edit`);
   revalidatePath(`/conti/${contiId}`);
