@@ -63,7 +63,7 @@ export default function ReferencePanel({
               href={ref.url}
               target="_blank"
               rel="noreferrer"
-              className="flex h-full min-w-56 items-center justify-center rounded-lg border border-ink-700 px-4 text-center text-sm text-accent"
+              className="flex h-full min-w-56 items-center justify-center rounded-lg border border-ink-700 px-4 text-center text-sm text-accent-ink"
             >
               {ref.label || ref.url}
             </a>
@@ -145,7 +145,7 @@ export default function ReferencePanel({
             href={searchUrl(songTitle, openInst)}
             target="_blank"
             rel="noreferrer"
-            className="text-xs text-accent underline"
+            className="text-xs text-accent-ink underline"
           >
             유튜브에서 보기
           </a>

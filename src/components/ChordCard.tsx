@@ -67,7 +67,7 @@ export default function ChordCard({ name }: { name: string }) {
       {/* 피아노 */}
       <p className="mt-4 mb-1.5 text-xs font-medium uppercase tracking-wider text-ink-600">건반</p>
       <div className="relative h-20 w-full max-w-[15rem] select-none">
-        {/* 건반은 테마와 무관하게 흰/검 그대로 두고, 코드음만 색으로 칠한다 */}
+        {/* 건반은 테마와 무관하게 흰/검 그대로 두므로, 칠하는 금색도 테마와 무관하게 고정한다 */}
         <div className="flex h-full gap-px">
           {WHITE.map((pc) => (
             <div
@@ -75,8 +75,8 @@ export default function ChordCard({ name }: { name: string }) {
               style={{
                 background: chordPcs.has(pc)
                   ? pc === rootPc
-                    ? "var(--color-accent)"
-                    : "color-mix(in srgb, var(--color-accent) 30%, #ffffff)"
+                    ? "#b07400"
+                    : "color-mix(in srgb, #b07400 30%, #ffffff)"
                   : "#ffffff",
               }}
               className="flex-1 rounded-b-md border border-neutral-400"
@@ -91,8 +91,8 @@ export default function ChordCard({ name }: { name: string }) {
               width: "10%",
               background: chordPcs.has(pc)
                 ? pc === rootPc
-                  ? "var(--color-accent)"
-                  : "color-mix(in srgb, var(--color-accent) 65%, #111111)"
+                  ? "#f0b429"
+                  : "color-mix(in srgb, #f0b429 65%, #111111)"
                 : "#1c1c1c",
             }}
             className="absolute top-0 h-[62%] rounded-b-md border border-neutral-700"

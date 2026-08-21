@@ -13,9 +13,13 @@
   --color-ink-400: #6b6a67; /* 보조 글자 */
   --color-ink-200: #1a1a19; /* 본문 글자 */
 
-  --color-accent: #2b6cb0;
-  --color-accent-soft: #eaf1fa;
-  --color-on-accent: #ffffff; /* accent 위 글자 */
+  /* 포인트색 — 금빛 노랑.
+     노랑은 흰 바탕에서 글자로 쓰면 안 읽히므로 두 단계로 나눈다.
+     accent = 채움(버튼·배지 배경), accent-ink = 글자·선 */
+  --color-accent: #eba300;
+  --color-accent-ink: #8f6100;
+  --color-accent-soft: #fdf3d8;
+  --color-on-accent: #241d0a; /* 노랑 위 글자는 검정 계열 */
 
   /* 부드러운 그림자 — 미니멀하게 은은히 */
   --shadow-card: 0 1px 2px rgb(15 15 15 / 0.04), 0 1px 3px rgb(15 15 15 / 0.03);
@@ -32,9 +36,10 @@
   --color-ink-400: #9b9a97;
   --color-ink-200: #ededec;
 
-  --color-accent: #5b9dd9;
-  --color-accent-soft: #263749;
-  --color-on-accent: #0d1116;
+  --color-accent: #f0b429;
+  --color-accent-ink: #f0b429; /* 어두운 바탕에선 밝은 금색이 그대로 잘 읽힌다 */
+  --color-accent-soft: #3a2d10;
+  --color-on-accent: #1a1408;
 
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3);
   --shadow-card-hover: 0 2px 6px rgb(0 0 0 / 0.4);

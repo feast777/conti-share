@@ -87,7 +87,7 @@ export default function ChordPanel({ sheets }: { sheets: SheetLite[] }) {
                 }}
                 className={`rounded-lg border px-2.5 py-1 text-xs transition ${
                   showing === c
-                    ? "border-accent text-accent"
+                    ? "border-accent text-accent-ink"
                     : "border-ink-700 text-ink-400 hover:text-ink-200"
                 }`}
               >

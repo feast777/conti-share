@@ -88,7 +88,7 @@ export default function GuitarDiagram({ v }: { v: Voicing }) {
           }
           height="7"
           rx="3.5"
-          fill="var(--color-accent)"
+          fill="var(--color-accent-ink)"
         />
       )}
 
@@ -100,7 +100,7 @@ export default function GuitarDiagram({ v }: { v: Voicing }) {
             cx={stringX(i)}
             cy={fretY(f - startFret) + CELL / 2}
             r="3.6"
-            fill="var(--color-accent)"
+            fill="var(--color-accent-ink)"
           />
         ) : null
       )}

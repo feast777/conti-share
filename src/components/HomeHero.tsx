@@ -106,7 +106,7 @@ export default function HomeHero({
             d.tone === "now"
               ? "bg-accent text-on-accent"
               : d.tone === "soon"
-                ? "bg-accent-soft text-accent"
+                ? "bg-accent-soft text-accent-ink"
                 : "bg-ink-800 text-ink-400";
 
           return (
