@@ -342,18 +342,19 @@ function FolderCard({
         drop.isOver && !dimmed ? "border-accent bg-accent-soft" : ""
       } ${dimmed ? "opacity-40" : ""}`}
     >
-      {/* 카드 전체가 링크. 버튼은 이 위에 올라간다 (겹치지 않게 자리로 나눠 배치) */}
+      {/* 카드 전체가 링크. z-10 으로 내용 위에 덮어야 이름·빈 곳 어디를 눌러도 열린다.
+          버튼들은 z-20 으로 다시 그 위에 올린다. */}
       <Link
         href={`/folder/${folder.id}`}
         draggable={false}
         aria-label={folder.name}
-        className="absolute inset-0 rounded-[0.875rem]"
+        className="absolute inset-0 z-10 rounded-[0.875rem]"
       />
 
       {/* 윗줄: 폴더 아이콘 · (즐겨찾기 / 위로 빼기) */}
       <div className="relative flex items-start justify-between">
         <FolderIcon className="h-[1.15rem] w-[1.15rem] text-ink-400" />
-        <div className="-mr-1 -mt-1 flex items-center gap-0.5">
+        <div className="relative z-20 -mr-1 -mt-1 flex items-center gap-0.5">
           <button
             onPointerDown={noDrag}
             onClick={stop(onToggleFavorite)}
@@ -391,7 +392,7 @@ function FolderCard({
           {folder.subfolder_count > 0 && ` · 폴더 ${folder.subfolder_count}`}
         </span>
         {reorder && (
-          <div className="-mb-1 -mr-1 flex shrink-0 items-center gap-0.5">
+          <div className="relative z-20 -mb-1 -mr-1 flex shrink-0 items-center gap-0.5">
             <button
               onPointerDown={noDrag}
               onClick={stop(reorder.onLeft)}
