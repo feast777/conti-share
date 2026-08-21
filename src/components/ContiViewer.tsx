@@ -136,6 +136,21 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
   const isMulti = layout !== "single" && pages.length > 1;
   const visiblePages = isMulti ? pages : current ? [current] : [];
   const visibleKeys = visiblePages.map((p) => key(p.sheet.id, p.page));
+
+  // 악보마다 원본 비율(세로/가로)을 기억해 자리를 나눈다.
+  // 상하 배치에서 각 칸 높이를 비율대로 주면 모든 악보가 '같은 폭'으로 그려진다.
+  const [shape, setShape] = useState<Record<string, number>>({});
+  const noteShape = useCallback((k: string, w: number, h: number) => {
+    if (!w || !h) return;
+    const r = h / w;
+    setShape((prev) => (Math.abs((prev[k] ?? 0) - r) < 0.001 ? prev : { ...prev, [k]: r }));
+  }, []);
+  /** 이 칸이 가져갈 몫 — 상하는 세로/가로, 좌우는 가로/세로 */
+  const share = (k: string) => {
+    const r = shape[k];
+    if (!r) return 1;
+    return layout === "horizontal" ? 1 / r : r;
+  };
   // 되돌리기·전체지우기 대상 장 (마지막으로 그린 장, 없으면 첫 장)
   const targetKey = activeKey && visibleKeys.includes(activeKey) ? activeKey : visibleKeys[0] ?? "";
 
@@ -514,9 +529,9 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
               !isMulti
                 ? "h-full w-full"
                 : layout === "vertical"
-                  ? "flex h-full w-full flex-col gap-1"
+                  ? "flex h-full w-full flex-col gap-px"
                   : layout === "horizontal"
-                    ? "flex h-full w-full flex-row gap-1"
+                    ? "flex h-full w-full flex-row gap-px"
                     : "grid h-full w-full grid-cols-2 grid-rows-2 gap-1"
             }
           >
@@ -530,12 +545,18 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
                       ? "h-full w-full"
                       : layout === "grid"
                         ? "relative min-h-0 min-w-0"
-                        : "relative min-h-0 min-w-0 flex-1"
+                        : "relative min-h-0 min-w-0"
+                  }
+                  style={
+                    isMulti && layout !== "grid"
+                      ? { flexGrow: share(k), flexShrink: 1, flexBasis: 0 }
+                      : undefined
                   }
                 >
                   <SheetStage
                     sheet={p.sheet}
                     page={p.page}
+                    onIntrinsic={(w, h) => noteShape(k, w, h)}
                     fit={isMulti ? "contain" : fit}
                     strokes={mine[k] ?? []}
                     otherStrokes={showOthers ? (others.map[k] ?? []) : []}
