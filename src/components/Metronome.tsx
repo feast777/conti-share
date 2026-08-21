@@ -169,7 +169,7 @@ export default function Metronome({ bpm: initialBpm }: { bpm?: string }) {
             onClick={() => setBeats(n)}
             className={`rounded-md border px-2.5 py-1 text-xs transition ${
               beats === n
-                ? "border-accent text-accent"
+                ? "border-accent text-accent-ink"
                 : "border-ink-700 text-ink-400 hover:text-ink-200"
             }`}
           >

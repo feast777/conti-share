@@ -473,7 +473,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
         <button
           onClick={() => setPedalTest((v) => !v)}
           className={`shrink-0 whitespace-nowrap rounded-md border px-2 py-1 text-xs transition ${
-            pedalTest ? "border-accent text-accent" : "border-ink-700 text-ink-400 hover:text-ink-200"
+            pedalTest ? "border-accent text-accent-ink" : "border-ink-700 text-ink-400 hover:text-ink-200"
           }`}
           title="페이지터너 페달이 보내는 키 확인"
         >
@@ -508,7 +508,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
             onClick={() => selectSong(i)}
             className={`shrink-0 rounded-md px-2.5 py-1 text-xs transition ${
               i === songIndex
-                ? "bg-accent-soft text-accent"
+                ? "bg-accent-soft text-accent-ink"
                 : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
             }`}
           >
@@ -618,7 +618,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
         {pedalTest && (
           <div className="pointer-events-none absolute inset-x-0 bottom-10 flex justify-center px-4">
             <div className="max-w-full rounded-lg bg-black/80 px-3 py-1.5 text-center text-xs text-white">
-              페달/키를 눌러보세요 → <span className="font-mono text-accent">{lastKey || "…"}</span>
+              페달/키를 눌러보세요 → <span className="font-mono text-accent-ink">{lastKey || "…"}</span>
             </div>
           </div>
         )}
@@ -702,7 +702,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
             <button
               onClick={() => setShowOthers((v) => !v)}
               className={`h-8 w-full rounded-lg text-xs ${
-                showOthers ? "text-accent" : "text-ink-600"
+                showOthers ? "text-accent-ink" : "text-ink-600"
               } hover:bg-ink-800`}
               title="다른 사람 메모 보기"
             >
@@ -732,7 +732,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
             }}
             className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
               panelH > 0 && panelTab === "ref"
-                ? "bg-accent-soft text-accent"
+                ? "bg-accent-soft text-accent-ink"
                 : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
             }`}
           >
@@ -746,7 +746,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
             }}
             className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
               panelH > 0 && panelTab === "memo"
-                ? "bg-accent-soft text-accent"
+                ? "bg-accent-soft text-accent-ink"
                 : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
             }`}
           >
@@ -760,7 +760,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
             }}
             className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
               panelH > 0 && panelTab === "chord"
-                ? "bg-accent-soft text-accent"
+                ? "bg-accent-soft text-accent-ink"
                 : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
             }`}
           >
@@ -774,7 +774,7 @@ export default function ContiViewer({ conti, annotations, me }: Props) {
             }}
             className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
               panelH > 0 && panelTab === "beat"
-                ? "bg-accent-soft text-accent"
+                ? "bg-accent-soft text-accent-ink"
                 : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
             }`}
           >

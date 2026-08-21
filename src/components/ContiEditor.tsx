@@ -474,7 +474,7 @@ function SongCard({
                 href={ref.url}
                 target="_blank"
                 rel="noreferrer"
-                className="min-w-0 flex-1 truncate text-accent hover:underline"
+                className="min-w-0 flex-1 truncate text-accent-ink hover:underline"
               >
                 {ref.url}
               </a>

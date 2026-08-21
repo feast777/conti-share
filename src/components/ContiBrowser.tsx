@@ -293,7 +293,7 @@ function Crumb({
       ref={setNodeRef}
       href={href}
       className={`flex items-center gap-1 rounded-md px-1.5 py-1 transition ${
-        isOver ? "bg-accent-soft text-accent" : "hover:bg-ink-800 hover:text-ink-200"
+        isOver ? "bg-accent-soft text-accent-ink" : "hover:bg-ink-800 hover:text-ink-200"
       }`}
     >
       {children}
@@ -358,7 +358,7 @@ function FolderCard({
             onPointerDown={noDrag}
             onClick={stop(onToggleFavorite)}
             className={`grid h-7 w-7 place-items-center rounded-md transition hover:bg-ink-800 ${
-              folder.is_favorite ? "text-accent" : "text-ink-600 hover:text-ink-200"
+              folder.is_favorite ? "text-accent-ink" : "text-ink-600 hover:text-ink-200"
             }`}
             title={folder.is_favorite ? "즐겨찾기 해제" : "즐겨찾기 — 홈에 다음 콘티 표시"}
             aria-label="즐겨찾기"
