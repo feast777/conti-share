@@ -120,3 +120,23 @@ export function TempoIcon({ className = "h-4 w-4" }: { className?: string }) {
     </svg>
   );
 }
+
+export function StarIcon({
+  className = "h-4 w-4",
+  filled = false,
+}: {
+  className?: string;
+  filled?: boolean;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      {...base}
+      fill={filled ? "currentColor" : "none"}
+      aria-hidden
+    >
+      <path d="m12 3.6 2.6 5.3 5.9.9-4.25 4.15 1 5.85L12 17.05 6.75 19.8l1-5.85L3.5 9.8l5.9-.9z" />
+    </svg>
+  );
+}

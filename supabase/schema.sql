@@ -24,6 +24,7 @@ create table if not exists folder (
   -- 상위 폴더 (비어있으면 최상위). 폴더 삭제 시 하위 폴더는 액션에서 한 단계 위로 올린다.
   parent_id   uuid references folder(id) on delete set null,
   order_index int  not null default 0,             -- 직접 정렬 순서
+  is_favorite boolean not null default false,      -- 즐겨찾기 (홈에 다음 콘티를 띄운다)
   created_by  text not null default '',
   created_at  timestamptz not null default now()
 );

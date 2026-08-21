@@ -22,9 +22,18 @@ import {
   moveConti,
   moveFolder,
   reorderFolders,
+  toggleFolderFavorite,
 } from "@/app/actions";
 import PdfButton from "@/components/PdfButton";
-import { ChevronRight, CopyIcon, FolderIcon, GripIcon, HomeIcon, PlusIcon } from "@/components/icons";
+import {
+  ChevronRight,
+  CopyIcon,
+  FolderIcon,
+  GripIcon,
+  HomeIcon,
+  PlusIcon,
+  StarIcon,
+} from "@/components/icons";
 import type { ContiSummary, FolderSummary } from "@/lib/types";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -183,6 +192,9 @@ export default function ContiBrowser({ currentFolderId, path, subfolders, contis
               key={f.id}
               folder={f}
               draggingId={active?.kind === "f" ? active.id : null}
+              onToggleFavorite={() =>
+                void toggleFolderFavorite(f.id, !f.is_favorite).then(refresh)
+              }
               up={
                 currentFolderId
                   ? {
@@ -296,12 +308,14 @@ function FolderCard({
   draggingId,
   reorder,
   up,
+  onToggleFavorite,
 }: {
   folder: FolderSummary;
   draggingId: string | null;
   reorder: Reorder | null;
   /** 상위로 빼기 (홈에서는 없음) */
   up: { label: string; onUp: () => void } | null;
+  onToggleFavorite: () => void;
 }) {
   const drop = useDroppable({ id: `f:${folder.id}` });
   const drag = useDraggable({ id: `f:${folder.id}` });
@@ -310,6 +324,15 @@ function FolderCard({
     drag.setNodeRef(n);
   };
   const dimmed = draggingId === folder.id;
+
+  // 버튼은 카드를 열지 않고 자기 동작만 하도록 (드래그도 시작하지 않게)
+  const stop = (fn: () => void) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fn();
+  };
+  const noDrag = (e: React.PointerEvent) => e.stopPropagation();
+
   return (
     <div
       ref={setRef}
@@ -319,59 +342,79 @@ function FolderCard({
         drop.isOver && !dimmed ? "border-accent bg-accent-soft" : ""
       } ${dimmed ? "opacity-40" : ""}`}
     >
-      <div className="absolute right-1.5 top-1.5 flex gap-0.5">
-        {up && (
-          <button
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              up.onUp();
-            }}
-            className="grid h-6 w-6 place-items-center rounded-md text-xs text-ink-600 transition hover:bg-ink-800 hover:text-ink-200"
-            title={`'${up.label}' 로 빼기`}
-            aria-label="상위 폴더로 빼기"
-          >
-            ↑
-          </button>
-        )}
-      </div>
-      {reorder && (
-        <div className="absolute left-1.5 top-1.5 flex gap-0.5">
-          <button
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              reorder.onLeft();
-            }}
-            disabled={!reorder.canLeft}
-            className="grid h-6 w-6 place-items-center rounded-md text-xs text-ink-600 transition hover:bg-ink-800 hover:text-ink-200 disabled:opacity-25"
-            aria-label="앞으로"
-          >
-            ‹
-          </button>
-          <button
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              reorder.onRight();
-            }}
-            disabled={!reorder.canRight}
-            className="grid h-6 w-6 place-items-center rounded-md text-xs text-ink-600 transition hover:bg-ink-800 hover:text-ink-200 disabled:opacity-25"
-            aria-label="뒤로"
-          >
-            ›
-          </button>
-        </div>
-      )}
-      <Link href={`/folder/${folder.id}`} draggable={false} className="flex flex-col">
+      {/* 카드 전체가 링크. 버튼은 이 위에 올라간다 (겹치지 않게 자리로 나눠 배치) */}
+      <Link
+        href={`/folder/${folder.id}`}
+        draggable={false}
+        aria-label={folder.name}
+        className="absolute inset-0 rounded-[0.875rem]"
+      />
+
+      {/* 윗줄: 폴더 아이콘 · (즐겨찾기 / 위로 빼기) */}
+      <div className="relative flex items-start justify-between">
         <FolderIcon className="h-[1.15rem] w-[1.15rem] text-ink-400" />
-        <span className="mt-2.5 truncate pr-8 text-sm font-medium text-ink-200">{folder.name}</span>
-        <span className="mt-0.5 text-xs text-ink-600">
+        <div className="-mr-1 -mt-1 flex items-center gap-0.5">
+          <button
+            onPointerDown={noDrag}
+            onClick={stop(onToggleFavorite)}
+            className={`grid h-7 w-7 place-items-center rounded-md transition hover:bg-ink-800 ${
+              folder.is_favorite ? "text-accent" : "text-ink-600 hover:text-ink-200"
+            }`}
+            title={folder.is_favorite ? "즐겨찾기 해제" : "즐겨찾기 — 홈에 다음 콘티 표시"}
+            aria-label="즐겨찾기"
+          >
+            <StarIcon className="h-4 w-4" filled={folder.is_favorite} />
+          </button>
+          {up && (
+            <button
+              onPointerDown={noDrag}
+              onClick={stop(up.onUp)}
+              className="grid h-7 w-7 place-items-center rounded-md text-sm text-ink-600 transition hover:bg-ink-800 hover:text-ink-200"
+              title={`'${up.label}' 로 빼기`}
+              aria-label="상위 폴더로 빼기"
+            >
+              ↑
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 이름 */}
+      <span className="relative mt-2.5 truncate text-sm font-medium text-ink-200">
+        {folder.name}
+      </span>
+
+      {/* 아랫줄: 개수 · 순서 바꾸기 (윗줄 버튼과 자리가 겹치지 않는다) */}
+      <div className="relative mt-0.5 flex items-end justify-between gap-1">
+        <span className="truncate text-xs text-ink-600">
           콘티 {folder.conti_count}
           {folder.subfolder_count > 0 && ` · 폴더 ${folder.subfolder_count}`}
         </span>
-      </Link>
+        {reorder && (
+          <div className="-mb-1 -mr-1 flex shrink-0 items-center gap-0.5">
+            <button
+              onPointerDown={noDrag}
+              onClick={stop(reorder.onLeft)}
+              disabled={!reorder.canLeft}
+              className="grid h-7 w-7 place-items-center rounded-md text-sm text-ink-600 transition hover:bg-ink-800 hover:text-ink-200 disabled:opacity-20"
+              title="앞으로"
+              aria-label="앞으로"
+            >
+              ‹
+            </button>
+            <button
+              onPointerDown={noDrag}
+              onClick={stop(reorder.onRight)}
+              disabled={!reorder.canRight}
+              className="grid h-7 w-7 place-items-center rounded-md text-sm text-ink-600 transition hover:bg-ink-800 hover:text-ink-200 disabled:opacity-20"
+              title="뒤로"
+              aria-label="뒤로"
+            >
+              ›
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

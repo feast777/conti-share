@@ -374,6 +374,16 @@ export async function moveFolder(folderId: string, parentId: string | null) {
   if (parentId) revalidatePath(`/folder/${parentId}`);
 }
 
+/** 폴더 즐겨찾기 켜고 끄기 — 즐겨찾은 폴더의 다음 콘티가 홈에 뜬다. */
+export async function toggleFolderFavorite(id: string, next: boolean) {
+  const session = await requireSession();
+  await assertFolder(id, session.church);
+  const { error } = await db.from("folder").update({ is_favorite: next }).eq("id", id);
+  if (error) throw error;
+  revalidatePath("/");
+  revalidatePath(`/folder/${id}`);
+}
+
 export async function renameFolder(id: string, name: string) {
   const session = await requireSession();
   await assertFolder(id, session.church);

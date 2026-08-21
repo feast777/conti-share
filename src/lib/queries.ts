@@ -82,16 +82,30 @@ export async function listContis(
 /** 모든 폴더 (각 폴더의 콘티 개수 · 하위 폴더 개수 · 상위 폴더 포함).
  *  화면에서는 이 목록을 부모별로 걸러서 쓴다. */
 export async function listAllFolders(church: string): Promise<FolderSummary[]> {
-  const [{ data: folders, error: fErr }, { data: contis, error: cErr }] = await withRetry(() =>
+  const FOLDER_COLS = "id, name, parent_id, order_index, created_at, is_favorite";
+  // is_favorite 컬럼이 아직 없는 DB(마이그레이션 전)에서도 폴더가 사라지지 않게 한 번 더 시도한다
+  type FolderRows = { data: Record<string, unknown>[] | null; error: { code?: string } | null };
+  const selectFolders = (cols: string) =>
+    db
+      .from("folder")
+      .select(cols)
+      .eq("church", church)
+      .order("order_index")
+      .order("name") as unknown as PromiseLike<FolderRows>;
+
+  let [{ data: folders, error: fErr }, { data: contis, error: cErr }] = await withRetry(() =>
     Promise.all([
-      db
-        .from("folder")
-        .select("id, name, parent_id, order_index, created_at")
-        .eq("church", church)
-        .order("name"),
+      selectFolders(FOLDER_COLS),
       db.from("conti").select("folder_id").eq("church", church),
     ])
   );
+  if (fErr && (fErr as { code?: string }).code === "42703") {
+    const retry = await withRetry(() =>
+      Promise.resolve(selectFolders(FOLDER_COLS.replace(", is_favorite", "")))
+    );
+    folders = retry.data;
+    fErr = retry.error;
+  }
   // 에러를 삼키면 폴더가 '사라진 것처럼' 빈 목록이 되므로, 오류는 그대로 던진다
   if (fErr) throw fErr;
   if (cErr) throw cErr;
@@ -113,6 +127,7 @@ export async function listAllFolders(church: string): Promise<FolderSummary[]> {
     parent_id: (f.parent_id as string | null) ?? null,
     order_index: (f.order_index as number) ?? 0,
     created_at: (f.created_at as string) ?? "",
+    is_favorite: Boolean(f.is_favorite),
     conti_count: contiCount.get(f.id as string) ?? 0,
     subfolder_count: subCount.get(f.id as string) ?? 0,
   }));
