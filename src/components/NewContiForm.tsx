@@ -1,9 +1,10 @@
 import { createConti } from "@/app/actions";
+import { todaySeoul } from "@/lib/date";
 import { PlusIcon } from "./icons";
 
 /** 새 콘티 만들기 폼. folderId 를 주면 그 폴더 안에 만들어진다(홈에서는 폴더 밖). */
 export default function NewContiForm({ folderId }: { folderId?: string }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todaySeoul();
   return (
     <form
       action={createConti}

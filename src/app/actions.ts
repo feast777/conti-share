@@ -3,6 +3,7 @@
 import { revalidatePath, unstable_cache } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSession, destroySession, findChurchByPassword, requireSession } from "@/lib/auth";
+import { todaySeoul } from "@/lib/date";
 import { SHEET_BUCKET, db, signSheetUrl } from "@/lib/db";
 import { getAnnotations, getConti, searchSongs } from "@/lib/queries";
 import type { SheetKind, SheetLayout, Stroke, YoutubeHit } from "@/lib/types";
@@ -79,7 +80,7 @@ export async function createConti(formData: FormData) {
     .insert({
       church: session.church,
       title: title || "새 콘티",
-      service_date: serviceDate || new Date().toISOString().slice(0, 10),
+      service_date: serviceDate || todaySeoul(),
       created_by: session.name,
       folder_id: folderId,
     })
@@ -147,7 +148,7 @@ export async function duplicateConti(id: string) {
     .insert({
       church: session.church,
       title: `${src.title} (복사)`,
-      service_date: new Date().toISOString().slice(0, 10),
+      service_date: todaySeoul(),
       note: src.note,
       created_by: session.name,
       folder_id: src.folder_id, // 같은 폴더 안에 복사본을 둔다
