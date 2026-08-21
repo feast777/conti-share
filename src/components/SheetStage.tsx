@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RenderTask } from "pdfjs-dist";
+import { freshSheetUrl } from "@/app/actions";
 import { getPdfDocument } from "@/lib/pdf";
 import type { Sheet, Stroke } from "@/lib/types";
 import AnnotationCanvas, { type Tool } from "./AnnotationCanvas";
@@ -41,6 +42,36 @@ export default function SheetStage({
   const [intrinsic, setIntrinsic] = useState<Size | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // 열람 주소가 만료됐을 수 있으니, 한 번 실패하면 새 주소를 받아 다시 시도한다
+  const [url, setUrl] = useState(sheet.url);
+  const retriedRef = useRef(false);
+  useEffect(() => {
+    setUrl(sheet.url);
+    retriedRef.current = false;
+  }, [sheet.url, sheet.id]);
+
+  const retryWithFreshUrl = useCallback(
+    async (fallbackMessage: string) => {
+      if (retriedRef.current) {
+        setError(fallbackMessage);
+        return;
+      }
+      retriedRef.current = true;
+      try {
+        const next = await freshSheetUrl(sheet.id);
+        if (next) {
+          setError(null);
+          setUrl(next);
+          return;
+        }
+      } catch {
+        /* 실패하면 아래에서 안내 */
+      }
+      setError(fallbackMessage);
+    },
+    [sheet.id]
+  );
+
   // 컨테이너 크기 추적
   useEffect(() => {
     const el = boxRef.current;
@@ -59,7 +90,7 @@ export default function SheetStage({
     setIntrinsic(null);
     setError(null);
 
-    if (!sheet.url) {
+    if (!url) {
       setError("악보 파일을 불러올 수 없습니다.");
       return;
     }
@@ -69,22 +100,22 @@ export default function SheetStage({
       img.onload = () => {
         if (!cancelled) setIntrinsic({ w: img.naturalWidth, h: img.naturalHeight });
       };
-      img.onerror = () => !cancelled && setError("이미지를 불러오지 못했습니다.");
-      img.src = sheet.url;
+      img.onerror = () => !cancelled && void retryWithFreshUrl("이미지를 불러오지 못했습니다.");
+      img.src = url;
     } else {
-      getPdfDocument(sheet.url)
+      getPdfDocument(url)
         .then((doc) => doc.getPage(page))
         .then((p) => {
           const vp = p.getViewport({ scale: 1 });
           if (!cancelled) setIntrinsic({ w: vp.width, h: vp.height });
         })
-        .catch(() => !cancelled && setError("PDF 를 불러오지 못했습니다."));
+        .catch(() => !cancelled && void retryWithFreshUrl("PDF 를 불러오지 못했습니다."));
     }
 
     return () => {
       cancelled = true;
     };
-  }, [sheet.url, sheet.kind, page]);
+  }, [url, sheet.kind, page, retryWithFreshUrl]);
 
   const display = useMemo<Size>(() => {
     if (!intrinsic || box.w === 0) return { w: 0, h: 0 };
@@ -99,12 +130,12 @@ export default function SheetStage({
 
   // PDF 페이지를 실제 표시 크기에 맞춰 렌더
   useEffect(() => {
-    if (sheet.kind !== "pdf" || !sheet.url || display.w === 0) return;
+    if (sheet.kind !== "pdf" || !url || display.w === 0) return;
 
     let cancelled = false;
     const dpr = Math.min(window.devicePixelRatio || 1, 2); // 3x 기기에서 메모리 폭주 방지
 
-    getPdfDocument(sheet.url)
+    getPdfDocument(url)
       .then((doc) => doc.getPage(page))
       .then((p) => {
         if (cancelled) return;
@@ -122,14 +153,14 @@ export default function SheetStage({
         renderTaskRef.current = task;
         return task.promise.catch(() => {}); // cancel 시 조용히 넘어간다
       })
-      .catch(() => !cancelled && setError("PDF 페이지를 그리지 못했습니다."));
+      .catch(() => !cancelled && void retryWithFreshUrl("PDF 페이지를 그리지 못했습니다."));
 
     return () => {
       cancelled = true;
       renderTaskRef.current?.cancel();
       renderTaskRef.current = null;
     };
-  }, [sheet.url, sheet.kind, page, display.w]);
+  }, [url, sheet.kind, page, display.w, retryWithFreshUrl]);
 
   return (
     <div
@@ -152,7 +183,7 @@ export default function SheetStage({
           {sheet.kind === "image" ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
-              src={sheet.url}
+              src={url}
               alt=""
               width={display.w}
               height={display.h}

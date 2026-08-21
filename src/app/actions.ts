@@ -3,7 +3,7 @@
 import { revalidatePath, unstable_cache } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSession, destroySession, findChurchByPassword, requireSession } from "@/lib/auth";
-import { SHEET_BUCKET, db } from "@/lib/db";
+import { SHEET_BUCKET, db, signSheetUrl } from "@/lib/db";
 import { getAnnotations, getConti, searchSongs } from "@/lib/queries";
 import type { SheetKind, SheetLayout, Stroke, YoutubeHit } from "@/lib/types";
 
@@ -203,6 +203,25 @@ export async function duplicateConti(id: string) {
 
   revalidatePath("/");
   redirect(`/conti/${newConti.id}/edit`);
+}
+
+// ─────────────────────────────────────────────
+// 악보 URL 다시 받기
+// ─────────────────────────────────────────────
+/**
+ * 악보가 안 열릴 때(URL 만료 등) 새 열람 주소를 즉시 발급한다.
+ * 캐시를 거치지 않으므로 항상 새 URL 이 나온다.
+ */
+export async function freshSheetUrl(sheetId: string): Promise<string> {
+  const session = await requireSession();
+  await assertSheet(sheetId, session.church);
+  const { data } = await db
+    .from("sheet")
+    .select("storage_path")
+    .eq("id", sheetId)
+    .maybeSingle();
+  if (!data?.storage_path) return "";
+  return signSheetUrl(data.storage_path as string, 60 * 60 * 24 * 7);
 }
 
 // ─────────────────────────────────────────────
