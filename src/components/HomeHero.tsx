@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ContiSummary, FolderSummary } from "@/lib/types";
+import PdfButton from "./PdfButton";
 import { ChevronRight, FolderIcon, LogoMark } from "./icons";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -109,13 +110,19 @@ export default function HomeHero({
                 : "bg-ink-800 text-ink-400";
 
           return (
-            <Link
+            <div
               key={folder.id}
-              href={`/conti/${conti.id}`}
-              className="card card-hover group flex items-stretch overflow-hidden"
+              className="card card-hover group relative flex items-stretch overflow-hidden"
             >
+              {/* 카드 전체가 링크. PDF 버튼은 이 위에 얹는다 */}
+              <Link
+                href={`/conti/${conti.id}`}
+                aria-label={conti.title}
+                className="absolute inset-0 rounded-[0.875rem]"
+              />
+
               {/* 날짜 블록 */}
-              <div className="flex shrink-0 flex-col items-center justify-center gap-0.5 border-r border-ink-700 bg-ink-800/60 px-5 py-6 sm:px-7">
+              <div className="relative flex shrink-0 flex-col items-center justify-center gap-0.5 border-r border-ink-700 bg-ink-800/60 px-5 py-6 sm:px-7">
                 <span className="text-[0.7rem] font-medium text-ink-600">
                   {date.getMonth() + 1}월
                 </span>
@@ -128,7 +135,7 @@ export default function HomeHero({
               </div>
 
               {/* 내용 */}
-              <div className="flex min-w-0 flex-1 items-center gap-3 px-4 py-5 sm:px-5">
+              <div className="relative flex min-w-0 flex-1 items-center gap-2 px-4 py-5 sm:gap-3 sm:px-5">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <span
@@ -144,14 +151,20 @@ export default function HomeHero({
                   <h3 className="mt-2 truncate text-[1.15rem] font-semibold leading-snug tracking-tight text-ink-200 sm:text-[1.3rem]">
                     {conti.title}
                   </h3>
-                  <p className="mt-1 truncate text-[0.8rem] text-ink-600">
-                    {conti.song_count}곡
-                    {conti.created_by && ` · ${conti.created_by}`}
-                  </p>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <p className="truncate text-[0.8rem] text-ink-600">
+                      {conti.song_count}곡
+                      {conti.created_by && ` · ${conti.created_by}`}
+                    </p>
+                    {/* 악보 전체를 PDF 로 — 카드를 열지 않고 바로 저장 */}
+                    <div className="-mb-1 -mr-1.5 shrink-0">
+                      <PdfButton contiId={conti.id} title={conti.title} />
+                    </div>
+                  </div>
                 </div>
                 <ChevronRight className="h-5 w-5 shrink-0 text-ink-600 transition group-hover:translate-x-0.5 group-hover:text-ink-400" />
               </div>
-            </Link>
+            </div>
           );
         })}
       </div>
