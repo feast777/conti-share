@@ -65,7 +65,7 @@ export default function SongSearch({ contiId }: { contiId: string }) {
       <button
         onClick={() => setOpen(true)}
         className="rounded-lg border border-ink-700 px-3 py-2 text-sm text-ink-400 transition hover:text-ink-200"
-        title="지난 콘티에서 곡을 찾아 악보째로 가져옵니다"
+        title="지난 콘티에서 곡을 찾아 악보·메모까지 그대로 가져옵니다"
       >
         지난 곡 찾기
       </button>
