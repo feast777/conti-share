@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { folderColor } from "@/lib/colors";
 import { daysBetween, todaySeoul } from "@/lib/date";
 import type { ContiSummary, FolderSummary } from "@/lib/types";
 import PdfButton from "./PdfButton";
@@ -143,7 +144,11 @@ export default function HomeHero({
                       {d.label}
                     </span>
                     <span className="flex min-w-0 items-center gap-1 text-[0.7rem] text-ink-600">
-                      <FolderIcon className="h-3 w-3 shrink-0" />
+                      <FolderIcon
+                        className="h-3.5 w-3.5 shrink-0"
+                        style={{ color: folderColor(folder.id) }}
+                        filled
+                      />
                       <span className="truncate">{folder.name}</span>
                     </span>
                   </div>
