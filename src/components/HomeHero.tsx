@@ -1,16 +1,14 @@
 import Link from "next/link";
+import { daysBetween, todaySeoul } from "@/lib/date";
 import type { ContiSummary, FolderSummary } from "@/lib/types";
 import PdfButton from "./PdfButton";
 import { ChevronRight, FolderIcon, LogoMark } from "./icons";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
-/** 예배일까지 남은 날 */
+/** 예배일까지 남은 날 (서울 기준) */
 function dday(iso: string) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const d = new Date(`${iso}T00:00:00`);
-  const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+  const diff = daysBetween(todaySeoul(), iso);
   if (diff === 0) return { label: "오늘 예배", tone: "now" as const };
   if (diff === 1) return { label: "내일 예배", tone: "now" as const };
   if (diff > 1)
@@ -36,7 +34,7 @@ function withDescendants(rootId: string, folders: FolderSummary[]) {
 
 /** 그 폴더(하위 포함)에서 다가오는 콘티 하나 — 없으면 가장 최근 것 */
 function pickConti(contis: ContiSummary[], ids: Set<string>) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todaySeoul();
   const pool = contis.filter((c) => c.folder_id && ids.has(c.folder_id));
   const upcoming = pool
     .filter((c) => c.service_date >= today)
