@@ -18,6 +18,8 @@ type Props = {
   color: string;
   size: number;
   onStrokesChange: (next: Stroke[]) => void;
+  /** 악보 원본 비율을 알려준다 — 여러 장을 나란히 놓을 때 자리 배분에 쓴다 */
+  onIntrinsic?: (w: number, h: number) => void;
 };
 
 type Size = { w: number; h: number };
@@ -33,10 +35,17 @@ export default function SheetStage({
   color,
   size,
   onStrokesChange,
+  onIntrinsic,
 }: Props) {
   const boxRef = useRef<HTMLDivElement>(null);
   const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
   const renderTaskRef = useRef<RenderTask | null>(null);
+
+  // 콜백이 매번 새로 와도 악보를 다시 받지 않도록 ref 로 들고 있는다
+  const onIntrinsicRef = useRef(onIntrinsic);
+  useEffect(() => {
+    onIntrinsicRef.current = onIntrinsic;
+  });
 
   const [box, setBox] = useState<Size>({ w: 0, h: 0 });
   const [intrinsic, setIntrinsic] = useState<Size | null>(null);
@@ -98,7 +107,9 @@ export default function SheetStage({
     if (sheet.kind === "image") {
       const img = new Image();
       img.onload = () => {
-        if (!cancelled) setIntrinsic({ w: img.naturalWidth, h: img.naturalHeight });
+        if (cancelled) return;
+        setIntrinsic({ w: img.naturalWidth, h: img.naturalHeight });
+        onIntrinsicRef.current?.(img.naturalWidth, img.naturalHeight);
       };
       img.onerror = () => !cancelled && void retryWithFreshUrl("이미지를 불러오지 못했습니다.");
       img.src = url;
@@ -107,7 +118,9 @@ export default function SheetStage({
         .then((doc) => doc.getPage(page))
         .then((p) => {
           const vp = p.getViewport({ scale: 1 });
-          if (!cancelled) setIntrinsic({ w: vp.width, h: vp.height });
+          if (cancelled) return;
+          setIntrinsic({ w: vp.width, h: vp.height });
+          onIntrinsicRef.current?.(vp.width, vp.height);
         })
         .catch(() => !cancelled && void retryWithFreshUrl("PDF 를 불러오지 못했습니다."));
     }
