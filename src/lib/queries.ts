@@ -19,9 +19,13 @@ import type {
  * 파일은 경로(uuid)마다 고유하고, 지우면 DB 에서도 빠지므로 오래 재사용해도 안전하다.
  */
 const signSheetUrlCached = unstable_cache(
-  (path: string) => signSheetUrl(path, 60 * 60 * 12), // 12시간 유효한 URL
+  // URL 유효기간은 캐시 재사용 기간보다 훨씬 길어야 한다.
+  // 캐시는 '오래된 값을 먼저 주고 뒤에서 갱신'하는 방식이라, 한동안 아무도
+  // 안 들어오면 캐시에 남아있던 URL 이 그대로 나간다. 유효기간이 짧으면
+  // 그 URL 이 이미 만료돼 악보가 안 열린다.
+  (path: string) => signSheetUrl(path, 60 * 60 * 24 * 7), // 7일 유효
   ["sheet-signed-url"],
-  { revalidate: 60 * 60 * 6 } // 6시간 동안 같은 URL 재사용
+  { revalidate: 60 * 60 } // 1시간마다 갱신 (만료까지 여유 7일)
 );
 
 
