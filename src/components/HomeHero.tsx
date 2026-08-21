@@ -114,11 +114,12 @@ export default function HomeHero({
               key={folder.id}
               className="card card-hover group relative flex items-stretch overflow-hidden"
             >
-              {/* 카드 전체가 링크. PDF 버튼은 이 위에 얹는다 */}
+              {/* 카드 전체가 링크. z-10 으로 내용 위에 덮어야 아무 데나 눌러도 열린다.
+                  (그냥 깔기만 하면 아래 텍스트 블록에 가려져서 빈 틈만 눌린다) */}
               <Link
                 href={`/conti/${conti.id}`}
                 aria-label={conti.title}
-                className="absolute inset-0 rounded-[0.875rem]"
+                className="absolute inset-0 z-10 rounded-[0.875rem]"
               />
 
               {/* 날짜 블록 */}
@@ -157,7 +158,7 @@ export default function HomeHero({
                       {conti.created_by && ` · ${conti.created_by}`}
                     </p>
                     {/* 악보 전체를 PDF 로 — 카드를 열지 않고 바로 저장 */}
-                    <div className="-mb-1 -mr-1.5 shrink-0">
+                    <div className="relative z-20 -mb-1 -mr-1.5 shrink-0">
                       <PdfButton contiId={conti.id} title={conti.title} />
                     </div>
                   </div>
