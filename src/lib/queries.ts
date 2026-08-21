@@ -86,7 +86,7 @@ export async function listAllFolders(church: string): Promise<FolderSummary[]> {
     Promise.all([
       db
         .from("folder")
-        .select("id, name, parent_id, order_index, created_at")
+        .select("id, name, parent_id, order_index, created_at, is_favorite")
         .eq("church", church)
         .order("name"),
       db.from("conti").select("folder_id").eq("church", church),
@@ -113,6 +113,7 @@ export async function listAllFolders(church: string): Promise<FolderSummary[]> {
     parent_id: (f.parent_id as string | null) ?? null,
     order_index: (f.order_index as number) ?? 0,
     created_at: (f.created_at as string) ?? "",
+    is_favorite: Boolean(f.is_favorite),
     conti_count: contiCount.get(f.id as string) ?? 0,
     subfolder_count: subCount.get(f.id as string) ?? 0,
   }));

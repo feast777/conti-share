@@ -22,9 +22,18 @@ import {
   moveConti,
   moveFolder,
   reorderFolders,
+  toggleFolderFavorite,
 } from "@/app/actions";
 import PdfButton from "@/components/PdfButton";
-import { ChevronRight, CopyIcon, FolderIcon, GripIcon, HomeIcon, PlusIcon } from "@/components/icons";
+import {
+  ChevronRight,
+  CopyIcon,
+  FolderIcon,
+  GripIcon,
+  HomeIcon,
+  PlusIcon,
+  StarIcon,
+} from "@/components/icons";
 import type { ContiSummary, FolderSummary } from "@/lib/types";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -183,6 +192,9 @@ export default function ContiBrowser({ currentFolderId, path, subfolders, contis
               key={f.id}
               folder={f}
               draggingId={active?.kind === "f" ? active.id : null}
+              onToggleFavorite={() =>
+                void toggleFolderFavorite(f.id, !f.is_favorite).then(refresh)
+              }
               up={
                 currentFolderId
                   ? {
@@ -296,12 +308,14 @@ function FolderCard({
   draggingId,
   reorder,
   up,
+  onToggleFavorite,
 }: {
   folder: FolderSummary;
   draggingId: string | null;
   reorder: Reorder | null;
   /** 상위로 빼기 (홈에서는 없음) */
   up: { label: string; onUp: () => void } | null;
+  onToggleFavorite: () => void;
 }) {
   const drop = useDroppable({ id: `f:${folder.id}` });
   const drag = useDraggable({ id: `f:${folder.id}` });
@@ -320,6 +334,21 @@ function FolderCard({
       } ${dimmed ? "opacity-40" : ""}`}
     >
       <div className="absolute right-1.5 top-1.5 flex gap-0.5">
+        <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleFavorite();
+          }}
+          className={`grid h-6 w-6 place-items-center rounded-md transition hover:bg-ink-800 ${
+            folder.is_favorite ? "text-accent" : "text-ink-600 hover:text-ink-200"
+          }`}
+          title={folder.is_favorite ? "즐겨찾기 해제" : "즐겨찾기 — 홈에 다음 콘티 표시"}
+          aria-label="즐겨찾기"
+        >
+          <StarIcon className="h-3.5 w-3.5" filled={folder.is_favorite} />
+        </button>
         {up && (
           <button
             onPointerDown={(e) => e.stopPropagation()}
